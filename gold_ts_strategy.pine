@@ -30,6 +30,8 @@ bool showEntry = input.bool(true, "Show Entry", group = G_DISPLAY)
 bool showSl = input.bool(true, "Show SL", group = G_DISPLAY)
 bool showTp = input.bool(true, "Show TP", group = G_DISPLAY)
 bool showDashboard = input.bool(true, "Show dashboard", group = G_DISPLAY)
+bool showTradeCard = input.bool(true, "Show simple trade instruction", group = G_DISPLAY,
+     tooltip = "Shows a large plain-language WAIT / ENTER instruction with frozen Entry, SL and TP directly on the chart.")
 bool researchMode = input.bool(false, "Backtesting / Research Mode", group = G_DISPLAY)
 
 string G_ALERTS = "Alerts"
@@ -298,6 +300,46 @@ if barstate.islast
         if not na(tpLine)
             line.delete(tpLine), tpLine := na
 
+// ── Plain-language live trade instruction ─────────────────────────────────────
+// This is display-only. It does not alter setup detection, revalidation, entries, exits, alerts, or statistics.
+var label tradeCard = na
+f_trade_instruction() =>
+    string zoneText = (na(entryLower) ? "—" : str.tostring(entryLower, format.mintick)) + "–" + (na(entryUpper) ? "—" : str.tostring(entryUpper, format.mintick))
+    string levelsText = "ENTRY " + zoneText + "  |  SL " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "  |  TP " + (na(target) ? "—" : str.tostring(target, format.mintick))
+    bool activationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar
+    string instruction = state == SETUP_FORMING_LONG ? "WAIT — LONG SETUP FORMING\n" + levelsText :
+         state == SETUP_FORMING_SHORT ? "WAIT — SHORT SETUP FORMING\n" + levelsText :
+         state == ENTRY_ACTIVE_LONG and activationBar ? "LONG — ENTER NOW\n" + levelsText :
+         state == ENTRY_ACTIVE_SHORT and activationBar ? "SHORT — ENTER NOW\n" + levelsText :
+         state == ENTRY_ACTIVE_LONG ? "LONG — TRADE ACTIVE\nORIGINAL " + levelsText + "\nDO NOT OPEN A NEW TRADE" :
+         state == ENTRY_ACTIVE_SHORT ? "SHORT — TRADE ACTIVE\nORIGINAL " + levelsText + "\nDO NOT OPEN A NEW TRADE" :
+         state == INVALID ? "INVALID — DO NOT ENTER" :
+         state == EXPIRED ? "EXPIRED — DO NOT ENTER" :
+         ""
+    instruction
+
+if barstate.islast
+    string tradeInstruction = f_trade_instruction()
+    bool showInstructionNow = showTradeCard and str.length(tradeInstruction) > 0
+    if showInstructionNow
+        float cardY = hasProjection ? entry : close
+        color cardColor = state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.lime :
+             state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? color.yellow :
+             state == INVALID ? color.red : color.gray
+        color cardTextColor = state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.black : color.black
+        if na(tradeCard)
+            tradeCard := label.new(bar_index + 2, cardY, tradeInstruction, xloc = xloc.bar_index, yloc = yloc.price,
+                 style = label.style_label_left, color = cardColor, textcolor = cardTextColor, size = size.large)
+        else
+            label.set_xy(tradeCard, bar_index + 2, cardY)
+            label.set_text(tradeCard, tradeInstruction)
+            label.set_color(tradeCard, cardColor)
+            label.set_textcolor(tradeCard, cardTextColor)
+            label.set_size(tradeCard, size.large)
+    else if not na(tradeCard)
+        label.delete(tradeCard)
+        tradeCard := na
+
 // Research marks are plots, not unbounded drawing objects.
 plotshape(researchMode and evLongSetup, "Long TS setup", shape.triangleup, location.belowbar, color.yellow, size = size.tiny, text = "TS")
 plotshape(researchMode and evShortSetup, "Short TS setup", shape.triangledown, location.abovebar, color.yellow, size = size.tiny, text = "TS")
@@ -309,12 +351,17 @@ plotshape(researchMode and evSl, "SL", shape.diamond, location.belowbar, color.r
 plotshape(researchMode and evAmbiguous, "Ambiguous", shape.square, location.abovebar, color.orange, size = size.tiny)
 
 // ── Compact dashboard and research segmentation ───────────────────────────────
-var table dash = table.new(position.top_right, 2, 13, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
 f_price(float value) => na(value) ? "—" : str.tostring(value, format.mintick)
 f_rate(int wins, int losses) => wins + losses == 0 ? "—" : str.tostring(100.0 * wins / (wins + losses), "#.0") + "%"
+
+// Keep one persistent table. TradingView's Tables style control governs whether graphic tables
+// are rendered; Show dashboard only controls this table's contents.
+var table dash = table.new(position.top_right, 2, 13, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+
 if barstate.islast
+    table.clear(dash, 0, 0, 1, 12)
     if showDashboard
-        table.cell(dash, 0, 0, "GOLD TS", text_color = color.yellow), table.cell(dash, 1, 0, "v0.1 RESEARCH", text_color = color.silver)
+        table.cell(dash, 0, 0, "GOLD TS", text_color = color.yellow), table.cell(dash, 1, 0, researchMode ? "v0.1 RESEARCH" : "v0.1 LIVE", text_color = color.silver)
         table.cell(dash, 0, 1, "Trend"), table.cell(dash, 1, 1, trend == 1 ? "BULLISH" : trend == -1 ? "BEARISH" : "NEUTRAL")
         table.cell(dash, 0, 2, "Status"), table.cell(dash, 1, 2, f_status_text(state), text_color = state == INVALID ? color.red : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? color.yellow : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.lime : color.white)
         table.cell(dash, 0, 3, "Direction"), table.cell(dash, 1, 3, direction == 1 ? "LONG" : direction == -1 ? "SHORT" : "—")
@@ -328,11 +375,6 @@ if barstate.islast
             table.cell(dash, 0, 10, "Conceptual TS + FVG"), table.cell(dash, 1, 10, str.tostring(fvgTrades) + " | " + str.tostring(fvgWins) + "W/" + str.tostring(fvgLosses) + "L | " + f_rate(fvgWins, fvgLosses) + " | " + str.tostring(fvgNetR, "#.##") + "R")
             table.cell(dash, 0, 11, "Conceptual TS no FVG"), table.cell(dash, 1, 11, str.tostring(plainTrades) + " | " + str.tostring(plainWins) + "W/" + str.tostring(plainLosses) + "L | " + f_rate(plainWins, plainLosses) + " | " + str.tostring(plainNetR, "#.##") + "R")
             table.cell(dash, 0, 12, "Conceptual ambiguous"), table.cell(dash, 1, 12, str.tostring(allAmbiguous))
-        else
-            for row = 9 to 12
-                table.cell(dash, 0, row, ""), table.cell(dash, 1, row, "")
-    else
-        table.clear(dash, 0, 0, 1, 12)
 
 // A strategy cannot expose usable alertcondition() triggers; alertcondition() only has effect in indicators.
 // The default alert() stream therefore contains VALID ENTRY only. Optional lifecycle alerts are explicitly
