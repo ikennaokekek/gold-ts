@@ -6,7 +6,7 @@ Gold TS is a research/beta TradingView strategy for XAUUSD. It implements the ca
 
 1. Open `gold_ts_strategy.pine` in TradingView's Pine Editor and add it to an XAUUSD chart (the exploratory baseline used 15-minute bars).
 2. Leave **Backtesting / Research Mode** off for the compact live view; turn it on for historical event marks and subgroup totals.
-3. To receive the one actionable notification, create a TradingView alert for the strategy and select **Any alert() function call**. The dynamic JSON alert is emitted only when a touched entry zone passes revalidation. The named setup-forming conditions are explicitly debug/informational and are not the default alert.
+3. To receive the one actionable notification, create a TradingView alert for the strategy and select **Any alert() function call**. With **Enable non-entry lifecycle alerts** left OFF (the default), the dynamic JSON stream emits only when a touched entry zone passes revalidation. Optional lifecycle messages are research-only, carry `actionable: false`, and must be deliberately enabled.
 4. Treat results as research. Validate settings across broader and unseen periods rather than optimizing the cited short sample.
 
 ## Exact baseline rules
@@ -42,15 +42,22 @@ On the current confirmed third candle, bullish FVG means `low > high[2]`; bearis
 
 From the bar after activation, a sole TP or SL touch resolves at the corresponding frozen level in the internal R statistics. If both occur inside one OHLC bar, the internal result is **ambiguous**, not a win or loss. `use_bar_magnifier` is enabled to improve TradingView's broker-emulator fills where lower-timeframe data is available, but the explicit internal ambiguity rule remains conservative.
 
-The strategy submits an order only after confirmed-bar revalidation. Because a historical OHLC strategy cannot causally discover an earlier intrabar touch and also place an order at that earlier price, TradingView's broker-emulator P&L can differ from the frozen-level internal R statistics. The dashboard's research counts follow the specified conceptual entry and conservative resolution rules; Strategy Tester fills follow TradingView's order model.
+The implementation deliberately maintains two named models:
+
+1. **SIGNAL / CONCEPTUAL RESEARCH MODEL.** The frozen projected entry center defines risk and the 2.3R target. A confirmed future bar must overlap the zone and pass revalidation. Conceptual outcomes and the dashboard then use the frozen entry, SL, and TP. Dashboard rows are explicitly prefixed `Conceptual`.
+2. **TRADINGVIEW BROKER-EMULATOR EXECUTION MODEL.** Only after successful confirmed-bar revalidation does the strategy submit a market entry. With `process_orders_on_close = true`, the emulator can fill at the confirmed touch bar close. It does not—and must not—retroactively fill at the earlier projected entry. The frozen SL/TP bracket is submitted with that market order.
+
+A post-revalidation limit order at the projected entry was rejected: it would either fill only on a later revisit (a different trade) or tempt a retroactive historical fill that did not exist before validation. `calc_on_order_fills` is disabled to avoid extra historical fill recalculations influencing the confirmed-bar conceptual state. Conceptual resolution no longer sends `strategy.close_all`, so it cannot race or overwrite the separate broker bracket.
+
+Accordingly, TradingView Strategy Tester P&L is interpretable only as the broker-emulator market-entry model, subject to TradingView fill assumptions and gaps. It is **not** the P&L of the projected-entry 2.3R conceptual model. The Conceptual dashboard is the latter model, and the two must not be compared as if their entry prices were identical.
 
 ## State machine and alerts
 
 The explicit states are `NO_SETUP`, long/short `SETUP_FORMING`, long/short `ENTRY_ACTIVE`, `INVALID`, `EXPIRED`, `COMPLETED_TP`, `COMPLETED_SL`, and `COMPLETED_AMBIGUOUS`. Only one setup exists at a time. Terminal status remains visible for one bar by default.
 
-The yellow forming state displays direction, frozen zone, SL, TP, R, and FVG metadata without calling `alert()`. On successful revalidation, state changes once to green active, the per-setup alert flag is set, and one structured JSON alert is sent at bar close. State transition out of forming prevents repeated alerts while price remains in the zone. Invalid or expired paths never call the actionable alert.
+The yellow forming state displays direction, frozen zone, SL, TP, R, and FVG metadata without an actionable call to `alert()`. On successful revalidation, state changes once to green active, the per-setup alert flag is set, and one structured JSON alert is sent at bar close. Its payload labels the entry `projected_entry`, includes `touch_bar_close`, identifies `model: SIGNAL_CONCEPTUAL`, and warns that the projection is not the broker fill. State transition out of forming prevents repeated alerts while price remains in the zone. Invalid or expired paths never call the actionable alert.
 
-Named `alertcondition()` events are supplied for research/debug and lifecycle automation (forming, valid long/short, invalid, expired, TP, and SL). They are separate from the primary structured valid-entry alert.
+Pine strategies do not expose usable `alertcondition()` triggers in the way indicators do. The prior inert declarations were removed. Optional lifecycle `alert()` messages now exist behind a default-OFF input; they are labeled non-actionable and cover forming, invalid, expired, conceptual TP/SL, and ambiguity. Leaving the option OFF preserves a VALID ENTRY-only `alert()` stream.
 
 ## Research output
 
@@ -88,6 +95,18 @@ The reference-model tests cover forming/no alert, long and short geometry, one-s
 
 * This environment has no official TradingView Pine compiler. Paste the strategy into the current Pine Editor and confirm compilation under Pine v6.
 * Confirm alert creation using **Any alert() function call**, inspect the JSON webhook payload, and verify exactly one notification for both FVG-tagged and untagged entries.
-* Compare Strategy Tester order fills with the internal dashboard. Confirm process-on-close and Bar Magnifier availability for the account/data range.
+* Compare Strategy Tester order fills with the Conceptual dashboard without treating them as the same model. Confirm process-on-close and Bar Magnifier availability for the account/data range.
 * Validate symbol tick formatting, chart timezone/session boundaries, gaps, tiny ATR, extreme volatility, insufficient warm-up data, and strategy behavior on live/replay bars.
 * Pine scripts cannot share imported local signal code in a standalone paste-friendly file. v0.1 therefore provides the requested authoritative strategy first; an indicator companion should be derived only with synchronization tests to avoid divergent logic.
+
+## Audit corrections (causal-execution pass)
+
+The adversarial audit confirmed and corrected these implementation defects without changing baseline parameters:
+
+* **High — model attribution:** projected-entry conceptual statistics and market-entry Strategy Tester results existed together without sufficiently explicit in-chart/payload attribution. Dashboard rows now say `Conceptual`; valid-entry JSON names `SIGNAL_CONCEPTUAL`, uses `projected_entry`, reports `touch_bar_close`, and states that the projection is not a broker fill.
+* **High — competing exit mechanisms:** the conceptual OHLC resolver called `strategy.close_all()` while an independent frozen `strategy.exit()` bracket was already working. Those market-close calls could compete with or overwrite the broker-emulator result. Conceptual resolution now updates only conceptual state/statistics; the broker bracket alone controls broker exits.
+* **Medium — fill recalculation risk:** `calc_on_order_fills` was enabled despite the confirmed-bar state model. It is now disabled so extra historical fill recalculations cannot cause the conceptual engine to consume broker-fill recalculation passes.
+* **Medium — unusable strategy alert conditions:** `alertcondition()` declarations in a strategy were misleading as lifecycle facilities. They were replaced by explicit default-OFF lifecycle `alert()` calls labeled `actionable: false`; default behavior remains one valid-entry-only actionable stream.
+* **Medium — ambiguous entry wording:** the alert field named `entry` could be mistaken for a broker fill. It is now `projected_entry`, alongside the observed touch-bar close and an execution warning.
+
+The audit did **not** change EMA 50/200, structure 20, ATR 14, 50% retracement, 0.10 ATR zone, 1 ATR stop, 24-bar expiry, or default 2.3R. It found no FVG dependency in signal generation or revalidation, no future-series access, and no duplicate actionable-alert path.
