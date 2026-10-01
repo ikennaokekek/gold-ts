@@ -40,7 +40,7 @@ On the current confirmed third candle, bullish FVG means `low > high[2]`; bearis
 
 ### Trade resolution
 
-From the bar after activation, a sole TP or SL touch resolves at the corresponding frozen level in the internal R statistics. If both occur inside one OHLC bar, the internal result is **ambiguous**, not a win or loss. `use_bar_magnifier` is enabled to improve TradingView's broker-emulator fills where lower-timeframe data is available, but the explicit internal ambiguity rule remains conservative.
+From the bar after activation, a sole TP or SL touch resolves at the corresponding frozen level in the internal R statistics. If both occur inside one OHLC bar, the internal result is **ambiguous**, not a win or loss. `use_bar_magnifier` is disabled by default so the strategy runs on TradingView plans that do not include Bar Magnifier. This affects only TradingView broker-emulator fill detail; the explicit internal ambiguity rule remains conservative.
 
 The implementation deliberately maintains two named models:
 
@@ -95,7 +95,7 @@ The reference-model tests cover forming/no alert, long and short geometry, one-s
 
 * This environment has no official TradingView Pine compiler. Paste the strategy into the current Pine Editor and confirm compilation under Pine v6.
 * Confirm alert creation using **Any alert() function call**, inspect the JSON webhook payload, and verify exactly one notification for both FVG-tagged and untagged entries.
-* Compare Strategy Tester order fills with the Conceptual dashboard without treating them as the same model. Confirm process-on-close and Bar Magnifier availability for the account/data range.
+* Compare Strategy Tester order fills with the Conceptual dashboard without treating them as the same model. Confirm process-on-close behavior. Bar Magnifier is disabled by default for plan compatibility; if separately enabled in a future variant, verify account/data-range availability before relying on its broker-emulator detail.
 * Validate symbol tick formatting, chart timezone/session boundaries, gaps, tiny ATR, extreme volatility, insufficient warm-up data, and strategy behavior on live/replay bars.
 * Pine scripts cannot share imported local signal code in a standalone paste-friendly file. v0.1 therefore provides the requested authoritative strategy first; an indicator companion should be derived only with synchronization tests to avoid divergent logic.
 
