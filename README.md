@@ -110,3 +110,13 @@ The adversarial audit confirmed and corrected these implementation defects witho
 * **Medium — ambiguous entry wording:** the alert field named `entry` could be mistaken for a broker fill. It is now `projected_entry`, alongside the observed touch-bar close and an execution warning.
 
 The audit did **not** change EMA 50/200, structure 20, ATR 14, 50% retracement, 0.10 ATR zone, 1 ATR stop, 24-bar expiry, or default 2.3R. It found no FVG dependency in signal generation or revalidation, no future-series access, and no duplicate actionable-alert path.
+
+## FTMO-style historical validation
+
+The fixed-rule, conceptual-model validation runner is `validation/ftmo_validate.py`; it does not change Pine behavior. Run it with a vetted UTC XAUUSD 15-minute CSV:
+
+```bash
+python validation/ftmo_validate.py --data path/to/xauusd-15m.csv
+```
+
+The current environment contained no dataset and could not fetch the referenced GitHub repository, so the committed validation outputs explicitly report `NO_DATASET_AVAILABLE` rather than fabricating results. See `validation/FTMO_VALIDATION_REPORT.md` for assumptions and limitations.

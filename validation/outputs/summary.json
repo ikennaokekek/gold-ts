@@ -1,0 +1,207 @@
+{
+  "fixed_parameters": {
+    "ema": [
+      50,
+      200
+    ],
+    "structure": 20,
+    "atr": 14,
+    "retracement": 0.5,
+    "zone_atr": 0.1,
+    "stop_atr": 1.0,
+    "expiry_bars": 24,
+    "rr": 2.3
+  },
+  "ftmo_assumptions": {
+    "phase1_target_pct": 10,
+    "phase2_target_pct": 5,
+    "daily_loss_pct": 5,
+    "maximum_loss_pct": 10,
+    "minimum_trading_days": 4,
+    "period": "unlimited but right-censored by dataset end",
+    "risk_basis": "current balance at entry"
+  },
+  "costs": {
+    "spread": 0,
+    "commission": 0,
+    "slippage": 0,
+    "note": "zero-cost baseline; no reliable cost data supplied"
+  },
+  "ambiguity_policy": "counted as -1R conservatively for capital and FTMO paths",
+  "performance": {
+    "trades": 0,
+    "wins": 0,
+    "losses": 0,
+    "ambiguous": 0,
+    "win_rate_resolved_pct": null,
+    "expectancy_r_including_ambiguous_as_loss": null,
+    "profit_factor_including_ambiguous_as_loss": null,
+    "max_consecutive_wins": 0,
+    "max_consecutive_losses": 0,
+    "max_drawdown_r": 0.0,
+    "monthly_r": {},
+    "yearly_r": {}
+  },
+  "by_direction": {},
+  "by_fvg": {},
+  "by_volatility": {},
+  "chronological_split": {
+    "definition": "first 70% trades / final 30% trades; no fitting",
+    "in_sample": {
+      "trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "ambiguous": 0,
+      "win_rate_resolved_pct": null,
+      "expectancy_r_including_ambiguous_as_loss": null,
+      "profit_factor_including_ambiguous_as_loss": null,
+      "max_consecutive_wins": 0,
+      "max_consecutive_losses": 0,
+      "max_drawdown_r": 0.0,
+      "monthly_r": {},
+      "yearly_r": {}
+    },
+    "out_of_sample": {
+      "trades": 0,
+      "wins": 0,
+      "losses": 0,
+      "ambiguous": 0,
+      "win_rate_resolved_pct": null,
+      "expectancy_r_including_ambiguous_as_loss": null,
+      "profit_factor_including_ambiguous_as_loss": null,
+      "max_consecutive_wins": 0,
+      "max_consecutive_losses": 0,
+      "max_drawdown_r": 0.0,
+      "monthly_r": {},
+      "yearly_r": {}
+    }
+  },
+  "walk_forward": {
+    "status": "NOT_RUN_INSUFFICIENT_YEARS",
+    "required_years": 2,
+    "available_years": [],
+    "note": "fixed rules; no fitting or selection"
+  },
+  "risk_scenarios": [
+    {
+      "risk_pct": 0.25,
+      "status": "NOT_RUN_NO_DATA",
+      "ending_balance_pct": null,
+      "max_drawdown_pct_compounded_close_to_close": null,
+      "worst_trading_day_pct": null,
+      "best_trading_day_pct": null,
+      "average_trades_per_trading_day": null,
+      "average_trades_per_active_week": null
+    },
+    {
+      "risk_pct": 0.5,
+      "status": "NOT_RUN_NO_DATA",
+      "ending_balance_pct": null,
+      "max_drawdown_pct_compounded_close_to_close": null,
+      "worst_trading_day_pct": null,
+      "best_trading_day_pct": null,
+      "average_trades_per_trading_day": null,
+      "average_trades_per_active_week": null
+    },
+    {
+      "risk_pct": 0.75,
+      "status": "NOT_RUN_NO_DATA",
+      "ending_balance_pct": null,
+      "max_drawdown_pct_compounded_close_to_close": null,
+      "worst_trading_day_pct": null,
+      "best_trading_day_pct": null,
+      "average_trades_per_trading_day": null,
+      "average_trades_per_active_week": null
+    },
+    {
+      "risk_pct": 1.0,
+      "status": "NOT_RUN_NO_DATA",
+      "ending_balance_pct": null,
+      "max_drawdown_pct_compounded_close_to_close": null,
+      "worst_trading_day_pct": null,
+      "best_trading_day_pct": null,
+      "average_trades_per_trading_day": null,
+      "average_trades_per_active_week": null
+    }
+  ],
+  "rolling_challenges": [
+    {
+      "risk_pct": 0.25,
+      "phase1_simulations": 0,
+      "phase1_passes": 0,
+      "phase1_failures": 0,
+      "phase1_incomplete": 0,
+      "phase1_pass_rate_excluding_incomplete_pct": null,
+      "median_trading_days_to_phase1_pass": null,
+      "phase2_passes_among_eligible": 0,
+      "full_two_phase_completions": 0,
+      "full_completion_rate_pct": null,
+      "daily_loss_failures": 0,
+      "maximum_loss_failures": 0,
+      "worst_observed_drawdown_pct": null
+    },
+    {
+      "risk_pct": 0.5,
+      "phase1_simulations": 0,
+      "phase1_passes": 0,
+      "phase1_failures": 0,
+      "phase1_incomplete": 0,
+      "phase1_pass_rate_excluding_incomplete_pct": null,
+      "median_trading_days_to_phase1_pass": null,
+      "phase2_passes_among_eligible": 0,
+      "full_two_phase_completions": 0,
+      "full_completion_rate_pct": null,
+      "daily_loss_failures": 0,
+      "maximum_loss_failures": 0,
+      "worst_observed_drawdown_pct": null
+    },
+    {
+      "risk_pct": 0.75,
+      "phase1_simulations": 0,
+      "phase1_passes": 0,
+      "phase1_failures": 0,
+      "phase1_incomplete": 0,
+      "phase1_pass_rate_excluding_incomplete_pct": null,
+      "median_trading_days_to_phase1_pass": null,
+      "phase2_passes_among_eligible": 0,
+      "full_two_phase_completions": 0,
+      "full_completion_rate_pct": null,
+      "daily_loss_failures": 0,
+      "maximum_loss_failures": 0,
+      "worst_observed_drawdown_pct": null
+    },
+    {
+      "risk_pct": 1.0,
+      "phase1_simulations": 0,
+      "phase1_passes": 0,
+      "phase1_failures": 0,
+      "phase1_incomplete": 0,
+      "phase1_pass_rate_excluding_incomplete_pct": null,
+      "median_trading_days_to_phase1_pass": null,
+      "phase2_passes_among_eligible": 0,
+      "full_two_phase_completions": 0,
+      "full_completion_rate_pct": null,
+      "daily_loss_failures": 0,
+      "maximum_loss_failures": 0,
+      "worst_observed_drawdown_pct": null
+    }
+  ],
+  "monte_carlo": {
+    "0.25": {
+      "iterations": 0,
+      "note": "not run: no trades"
+    },
+    "0.5": {
+      "iterations": 0,
+      "note": "not run: no trades"
+    },
+    "0.75": {
+      "iterations": 0,
+      "note": "not run: no trades"
+    },
+    "1.0": {
+      "iterations": 0,
+      "note": "not run: no trades"
+    }
+  }
+}
