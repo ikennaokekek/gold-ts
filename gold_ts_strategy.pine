@@ -30,6 +30,8 @@ bool showEntry = input.bool(true, "Show Entry", group = G_DISPLAY)
 bool showSl = input.bool(true, "Show SL", group = G_DISPLAY)
 bool showTp = input.bool(true, "Show TP", group = G_DISPLAY)
 bool showDashboard = input.bool(true, "Show dashboard", group = G_DISPLAY)
+bool showTradeCard = input.bool(true, "Show simple trade instruction", group = G_DISPLAY,
+     tooltip = "Shows a large plain-language WAIT / ENTER instruction with frozen Entry, SL and TP directly on the chart.")
 bool researchMode = input.bool(false, "Backtesting / Research Mode", group = G_DISPLAY)
 
 string G_ALERTS = "Alerts"
@@ -297,6 +299,43 @@ if barstate.islast
             line.delete(slLine), slLine := na
         if not na(tpLine)
             line.delete(tpLine), tpLine := na
+
+// ── Plain-language live trade instruction ─────────────────────────────────────
+// This is display-only. It does not alter setup detection, revalidation, entries, exits, alerts, or statistics.
+var label tradeCard = na
+f_trade_instruction() =>
+    string zoneText = f_price(entryLower) + "–" + f_price(entryUpper)
+    string levelsText = "ENTRY " + zoneText + "  |  SL " + f_price(stop) + "  |  TP " + f_price(target)
+    string instruction = state == SETUP_FORMING_LONG ? "WAIT — LONG SETUP FORMING\n" + levelsText :
+         state == SETUP_FORMING_SHORT ? "WAIT — SHORT SETUP FORMING\n" + levelsText :
+         state == ENTRY_ACTIVE_LONG ? "LONG — ENTER NOW\n" + levelsText :
+         state == ENTRY_ACTIVE_SHORT ? "SHORT — ENTER NOW\n" + levelsText :
+         state == INVALID ? "INVALID — DO NOT ENTER" :
+         state == EXPIRED ? "EXPIRED — DO NOT ENTER" :
+         ""
+    instruction
+
+if barstate.islast
+    string tradeInstruction = f_trade_instruction()
+    bool showInstructionNow = showTradeCard and str.length(tradeInstruction) > 0
+    if showInstructionNow
+        float cardY = hasProjection ? entry : close
+        color cardColor = state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.lime :
+             state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? color.yellow :
+             state == INVALID ? color.red : color.gray
+        color cardTextColor = state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.black : color.black
+        if na(tradeCard)
+            tradeCard := label.new(bar_index + 2, cardY, tradeInstruction, xloc = xloc.bar_index, yloc = yloc.price,
+                 style = label.style_label_left, color = cardColor, textcolor = cardTextColor, size = size.large)
+        else
+            label.set_xy(tradeCard, bar_index + 2, cardY)
+            label.set_text(tradeCard, tradeInstruction)
+            label.set_color(tradeCard, cardColor)
+            label.set_textcolor(tradeCard, cardTextColor)
+            label.set_size(tradeCard, size.large)
+    else if not na(tradeCard)
+        label.delete(tradeCard)
+        tradeCard := na
 
 // Research marks are plots, not unbounded drawing objects.
 plotshape(researchMode and evLongSetup, "Long TS setup", shape.triangleup, location.belowbar, color.yellow, size = size.tiny, text = "TS")
