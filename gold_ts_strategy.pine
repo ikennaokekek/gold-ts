@@ -304,8 +304,8 @@ if barstate.islast
 // This is display-only. It does not alter setup detection, revalidation, entries, exits, alerts, or statistics.
 var label tradeCard = na
 f_trade_instruction() =>
-    string zoneText = f_price(entryLower) + "–" + f_price(entryUpper)
-    string levelsText = "ENTRY " + zoneText + "  |  SL " + f_price(stop) + "  |  TP " + f_price(target)
+    string zoneText = (na(entryLower) ? "—" : str.tostring(entryLower, format.mintick)) + "–" + (na(entryUpper) ? "—" : str.tostring(entryUpper, format.mintick))
+    string levelsText = "ENTRY " + zoneText + "  |  SL " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "  |  TP " + (na(target) ? "—" : str.tostring(target, format.mintick))
     string instruction = state == SETUP_FORMING_LONG ? "WAIT — LONG SETUP FORMING\n" + levelsText :
          state == SETUP_FORMING_SHORT ? "WAIT — SHORT SETUP FORMING\n" + levelsText :
          state == ENTRY_ACTIVE_LONG ? "LONG — ENTER NOW\n" + levelsText :
