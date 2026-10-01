@@ -352,12 +352,14 @@ plotshape(researchMode and evSl, "SL", shape.diamond, location.belowbar, color.r
 plotshape(researchMode and evAmbiguous, "Ambiguous", shape.square, location.abovebar, color.orange, size = size.tiny)
 
 // ── Compact dashboard and research segmentation ───────────────────────────────
-var table dash = table.new(position.top_right, 2, 13, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+var table dash = na
 f_price(float value) => na(value) ? "—" : str.tostring(value, format.mintick)
 f_rate(int wins, int losses) => wins + losses == 0 ? "—" : str.tostring(100.0 * wins / (wins + losses), "#.0") + "%"
 if barstate.islast
     if showDashboard
-        table.cell(dash, 0, 0, "GOLD TS", text_color = color.yellow), table.cell(dash, 1, 0, "v0.1 RESEARCH", text_color = color.silver)
+        if na(dash)
+            dash := table.new(position.top_right, 2, 13, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+        table.cell(dash, 0, 0, "GOLD TS", text_color = color.yellow), table.cell(dash, 1, 0, researchMode ? "v0.1 RESEARCH" : "v0.1 LIVE", text_color = color.silver)
         table.cell(dash, 0, 1, "Trend"), table.cell(dash, 1, 1, trend == 1 ? "BULLISH" : trend == -1 ? "BEARISH" : "NEUTRAL")
         table.cell(dash, 0, 2, "Status"), table.cell(dash, 1, 2, f_status_text(state), text_color = state == INVALID ? color.red : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? color.yellow : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.lime : color.white)
         table.cell(dash, 0, 3, "Direction"), table.cell(dash, 1, 3, direction == 1 ? "LONG" : direction == -1 ? "SHORT" : "—")
@@ -374,8 +376,9 @@ if barstate.islast
         else
             for row = 9 to 12
                 table.cell(dash, 0, row, ""), table.cell(dash, 1, row, "")
-    else
-        table.clear(dash, 0, 0, 1, 12)
+    else if not na(dash)
+        table.delete(dash)
+        dash := na
 
 // A strategy cannot expose usable alertcondition() triggers; alertcondition() only has effect in indicators.
 // The default alert() stream therefore contains VALID ENTRY only. Optional lifecycle alerts are explicitly
