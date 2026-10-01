@@ -1,5 +1,5 @@
 //@version=6
-strategy("Gold TS v0.1", overlay = true, pyramiding = 0, process_orders_on_close = true, use_bar_magnifier = true,
+strategy("Gold TS v0.1", overlay = true, pyramiding = 0, process_orders_on_close = true, use_bar_magnifier = false,
      calc_on_order_fills = false, max_boxes_count = 100, max_lines_count = 200, max_labels_count = 200)
 
 // Gold TS v0.1 is a research baseline, not a claim of profitability.
