@@ -306,10 +306,13 @@ var label tradeCard = na
 f_trade_instruction() =>
     string zoneText = (na(entryLower) ? "—" : str.tostring(entryLower, format.mintick)) + "–" + (na(entryUpper) ? "—" : str.tostring(entryUpper, format.mintick))
     string levelsText = "ENTRY " + zoneText + "  |  SL " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "  |  TP " + (na(target) ? "—" : str.tostring(target, format.mintick))
+    bool activationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar
     string instruction = state == SETUP_FORMING_LONG ? "WAIT — LONG SETUP FORMING\n" + levelsText :
          state == SETUP_FORMING_SHORT ? "WAIT — SHORT SETUP FORMING\n" + levelsText :
-         state == ENTRY_ACTIVE_LONG ? "LONG — ENTER NOW\n" + levelsText :
-         state == ENTRY_ACTIVE_SHORT ? "SHORT — ENTER NOW\n" + levelsText :
+         state == ENTRY_ACTIVE_LONG and activationBar ? "LONG — ENTER NOW\n" + levelsText :
+         state == ENTRY_ACTIVE_SHORT and activationBar ? "SHORT — ENTER NOW\n" + levelsText :
+         state == ENTRY_ACTIVE_LONG ? "LONG — TRADE ACTIVE\nORIGINAL " + levelsText + "\nDO NOT OPEN A NEW TRADE" :
+         state == ENTRY_ACTIVE_SHORT ? "SHORT — TRADE ACTIVE\nORIGINAL " + levelsText + "\nDO NOT OPEN A NEW TRADE" :
          state == INVALID ? "INVALID — DO NOT ENTER" :
          state == EXPIRED ? "EXPIRED — DO NOT ENTER" :
          ""
