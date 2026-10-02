@@ -364,7 +364,8 @@ if barstate.islast
 var label tradeCard = na
 f_trade_instruction() =>
     string zoneText = (na(entryLower) ? "—" : str.tostring(entryLower, format.mintick)) + "–" + (na(entryUpper) ? "—" : str.tostring(entryUpper, format.mintick))
-    string projectedLevels = "PROJECTED ENTRY ZONE " + zoneText + "\nSL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "\nTP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + "\nR:R 1:" + str.tostring(rr)\n    string activationLevels = "ENTER AT MARKET AFTER THIS CONFIRMED CLOSE: " + str.tostring(close, format.mintick) + "\nORIGINAL ENTRY ZONE " + zoneText + "\nSL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "\nTP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + "\nR:R 1:" + str.tostring(rr)
+    string projectedLevels = "PROJECTED ENTRY ZONE " + zoneText + "\nSL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "\nTP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + "\nR:R 1:" + str.tostring(rr)
+    string activationLevels = "ENTER AT MARKET AFTER THIS CONFIRMED CLOSE: " + str.tostring(close, format.mintick) + "\nORIGINAL ENTRY ZONE " + zoneText + "\nSL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "\nTP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + "\nR:R 1:" + str.tostring(rr)
     bool activationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar
     string instruction = state == SETUP_FORMING_LONG ? "POSSIBLE BUY — WAIT\nDO NOT ENTER YET\n" + projectedLevels :
          state == SETUP_FORMING_SHORT ? "POSSIBLE SELL — WAIT\nDO NOT ENTER YET\n" + projectedLevels :
