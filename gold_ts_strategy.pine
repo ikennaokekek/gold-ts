@@ -242,7 +242,7 @@ if barstate.isconfirmed
             state := COMPLETED_AMBIGUOUS
             if researchMode and array.size(historyLabels) > 0
                 int histLast = array.size(historyLabels) - 1
-                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\nRESULT: AMBIGUOUS")
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\n⚠ RESULT: AMBIGUOUS")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -255,7 +255,7 @@ if barstate.isconfirmed
             state := COMPLETED_SL
             if researchMode and array.size(historyLabels) > 0
                 int histLast = array.size(historyLabels) - 1
-                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\nRESULT: SL HIT")
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\n❌ RESULT: SL HIT (-1R)")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -275,7 +275,7 @@ if barstate.isconfirmed
             state := COMPLETED_TP
             if researchMode and array.size(historyLabels) > 0
                 int histLast = array.size(historyLabels) - 1
-                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\nRESULT: TP HIT")
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\n✅ RESULT: TP HIT (+" + str.tostring(rr) + "R)")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
