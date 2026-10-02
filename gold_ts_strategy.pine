@@ -134,6 +134,7 @@ var array<line> historyEntryLines = array.new<line>()
 var array<line> historySlLines = array.new<line>()
 var array<line> historyTpLines = array.new<line>()
 var array<label> historyLabels = array.new<label>()
+var array<string> historyBaseTexts = array.new<string>()
 
 // One-bar event pulses, used for alertcondition() and research marks.
 bool evLongSetup = false
@@ -202,7 +203,7 @@ if barstate.isconfirmed
                 line histSl = line.new(activeBar, stop, activeBar + 1, stop, color = color.red, width = 2)
                 line histTp = line.new(activeBar, target, activeBar + 1, target, color = color.lime, width = 2)
                 string histZone = str.tostring(entryLower, format.mintick) + "–" + str.tostring(entryUpper, format.mintick)
-                string histText = (direction == 1 ? "BUY" : "SELL") + "\nENTRY " + histZone + "\nSL " + str.tostring(stop, format.mintick) + "\nTP " + str.tostring(target, format.mintick)
+                string histText = (direction == 1 ? "BUY GOLD" : "SELL GOLD") + "\nENTRY: " + histZone + "\nSL: " + str.tostring(stop, format.mintick) + "\nTP: " + str.tostring(target, format.mintick)
                 label histLabel = label.new(activeBar, direction == 1 ? entryLower : entryUpper, histText, xloc = xloc.bar_index, yloc = yloc.price,
                      style = direction == 1 ? label.style_label_up : label.style_label_down, color = histColor, textcolor = color.white, size = size.small)
                 array.push(historyEntryBoxes, histBox)
@@ -210,12 +211,14 @@ if barstate.isconfirmed
                 array.push(historySlLines, histSl)
                 array.push(historyTpLines, histTp)
                 array.push(historyLabels, histLabel)
+                array.push(historyBaseTexts, histText)
                 if array.size(historyLabels) > researchTradesToShow
                     box.delete(array.shift(historyEntryBoxes))
                     line.delete(array.shift(historyEntryLines))
                     line.delete(array.shift(historySlLines))
                     line.delete(array.shift(historyTpLines))
                     label.delete(array.shift(historyLabels))
+                    array.shift(historyBaseTexts)
             allTrades += 1
             if setupFvg
                 fvgTrades += 1
@@ -237,6 +240,9 @@ if barstate.isconfirmed
         if stopHit and tpHit
             // Conservative integrity rule: unknown ordering is not called a win or loss.
             state := COMPLETED_AMBIGUOUS
+            if researchMode and array.size(historyLabels) > 0
+                int histLast = array.size(historyLabels) - 1
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\nRESULT: AMBIGUOUS")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -247,6 +253,9 @@ if barstate.isconfirmed
             allAmbiguous += 1
         else if stopHit
             state := COMPLETED_SL
+            if researchMode and array.size(historyLabels) > 0
+                int histLast = array.size(historyLabels) - 1
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\nRESULT: SL HIT")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -264,6 +273,9 @@ if barstate.isconfirmed
                 plainNetR -= 1
         else if tpHit
             state := COMPLETED_TP
+            if researchMode and array.size(historyLabels) > 0
+                int histLast = array.size(historyLabels) - 1
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\nRESULT: TP HIT")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -387,17 +399,7 @@ if barstate.islast
         label.delete(tradeCard)
         tradeCard := na
 
-// Research marks are plots, not unbounded drawing objects.
-plotshape(researchMode and evLongSetup, "Long TS setup", shape.triangleup, location.belowbar, color.yellow, size = size.tiny, text = "TS")
-plotshape(researchMode and evShortSetup, "Short TS setup", shape.triangledown, location.abovebar, color.yellow, size = size.tiny, text = "TS")
-plotshape(researchMode and (evLongEntry or evShortEntry), "Entry activated", shape.circle, location.belowbar, color.lime, size = size.tiny)
-plotshape(researchMode and evInvalid, "Invalid", shape.xcross, location.abovebar, color.red, size = size.tiny)
-plotshape(researchMode and evExpired, "Expired", shape.xcross, location.abovebar, color.gray, size = size.tiny)
-plotshape(researchMode and evTp, "TP", shape.diamond, location.abovebar, color.lime, size = size.tiny)
-plotshape(researchMode and evSl, "SL", shape.diamond, location.belowbar, color.red, size = size.tiny)
-plotshape(researchMode and evAmbiguous, "Ambiguous", shape.square, location.abovebar, color.orange, size = size.tiny)
-
-// ── Compact dashboard and research segmentation ───────────────────────────────
+// Historical Research Mode plans are rendered above as plain BUY/SELL trade plans.\n\n// ── Compact dashboard and research segmentation ───────────────────────────────
 f_price(float value) => na(value) ? "—" : str.tostring(value, format.mintick)
 f_rate(int wins, int losses) => wins + losses == 0 ? "—" : str.tostring(100.0 * wins / (wins + losses), "#.0") + "%"
 
