@@ -203,7 +203,7 @@ if barstate.isconfirmed
                 line histSl = line.new(activeBar, stop, activeBar + 1, stop, color = color.red, width = 2)
                 line histTp = line.new(activeBar, target, activeBar + 1, target, color = color.lime, width = 2)
                 string histZone = str.tostring(entryLower, format.mintick) + "–" + str.tostring(entryUpper, format.mintick)
-                string histText = (direction == 1 ? "BUY GOLD" : "SELL GOLD") + "\nENTRY: " + histZone + "\nSL: " + str.tostring(stop, format.mintick) + "\nTP: " + str.tostring(target, format.mintick)
+                string histText = (direction == 1 ? "BUY GOLD" : "SELL GOLD") + " | ENTRY: " + histZone + " | SL: " + str.tostring(stop, format.mintick) + " | TP: " + str.tostring(target, format.mintick)
                 label histLabel = label.new(activeBar, direction == 1 ? entryLower : entryUpper, histText, xloc = xloc.bar_index, yloc = yloc.price,
                      style = direction == 1 ? label.style_label_up : label.style_label_down, color = histColor, textcolor = color.white, size = size.small)
                 array.push(historyEntryBoxes, histBox)
@@ -242,7 +242,7 @@ if barstate.isconfirmed
             state := COMPLETED_AMBIGUOUS
             if researchMode and array.size(historyLabels) > 0
                 int histLast = array.size(historyLabels) - 1
-                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\n⚠ RESULT: AMBIGUOUS")
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + " | ⚠ RESULT: AMBIGUOUS")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -255,7 +255,7 @@ if barstate.isconfirmed
             state := COMPLETED_SL
             if researchMode and array.size(historyLabels) > 0
                 int histLast = array.size(historyLabels) - 1
-                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\n❌ RESULT: SL HIT (-1R)")
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + " | ❌ RESULT: SL HIT (-1R)")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -275,7 +275,7 @@ if barstate.isconfirmed
             state := COMPLETED_TP
             if researchMode and array.size(historyLabels) > 0
                 int histLast = array.size(historyLabels) - 1
-                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + "\n✅ RESULT: TP HIT (+" + str.tostring(rr) + "R)")
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + " | ✅ RESULT: TP HIT (+" + str.tostring(rr) + "R)")
             if researchMode and array.size(historyEntryLines) > 0
                 line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
                 line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
@@ -364,15 +364,15 @@ if barstate.islast
 var label tradeCard = na
 f_trade_instruction() =>
     string zoneText = (na(entryLower) ? "—" : str.tostring(entryLower, format.mintick)) + "–" + (na(entryUpper) ? "—" : str.tostring(entryUpper, format.mintick))
-    string projectedLevels = "PROJECTED ENTRY ZONE " + zoneText + "\nSL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "\nTP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + "\nR:R 1:" + str.tostring(rr)
-    string activationLevels = "ENTER AT MARKET AFTER THIS CONFIRMED CLOSE: " + str.tostring(close, format.mintick) + "\nORIGINAL ENTRY ZONE " + zoneText + "\nSL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "\nTP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + "\nR:R 1:" + str.tostring(rr)
+    string projectedLevels = "PROJECTED ENTRY ZONE " + zoneText + " | SL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + " | TP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + " | R:R 1:" + str.tostring(rr)
+    string activationLevels = "ENTER AT MARKET AFTER THIS CONFIRMED CLOSE: " + str.tostring(close, format.mintick) + " | ORIGINAL ENTRY ZONE " + zoneText + " | SL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + " | TP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + " | R:R 1:" + str.tostring(rr)
     bool activationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar
-    string instruction = state == SETUP_FORMING_LONG ? "POSSIBLE BUY — WAIT\nDO NOT ENTER YET\n" + projectedLevels :
-         state == SETUP_FORMING_SHORT ? "POSSIBLE SELL — WAIT\nDO NOT ENTER YET\n" + projectedLevels :
-         state == ENTRY_ACTIVE_LONG and activationBar ? "BUY GOLD — ENTER NOW\n" + activationLevels :
-         state == ENTRY_ACTIVE_SHORT and activationBar ? "SELL GOLD — ENTER NOW\n" + activationLevels :
-         state == ENTRY_ACTIVE_LONG ? "BUY TRADE ACTIVE\n" + projectedLevels + "\nDO NOT OPEN A NEW TRADE" :
-         state == ENTRY_ACTIVE_SHORT ? "SELL TRADE ACTIVE\n" + projectedLevels + "\nDO NOT OPEN A NEW TRADE" :
+    string instruction = state == SETUP_FORMING_LONG ? "POSSIBLE BUY — WAIT | DO NOT ENTER YET | " + projectedLevels :
+         state == SETUP_FORMING_SHORT ? "POSSIBLE SELL — WAIT | DO NOT ENTER YET | " + projectedLevels :
+         state == ENTRY_ACTIVE_LONG and activationBar ? "BUY GOLD — ENTER NOW | " + activationLevels :
+         state == ENTRY_ACTIVE_SHORT and activationBar ? "SELL GOLD — ENTER NOW | " + activationLevels :
+         state == ENTRY_ACTIVE_LONG ? "BUY TRADE ACTIVE | " + projectedLevels + " | DO NOT OPEN A NEW TRADE" :
+         state == ENTRY_ACTIVE_SHORT ? "SELL TRADE ACTIVE | " + projectedLevels + " | DO NOT OPEN A NEW TRADE" :
          state == INVALID ? "NO TRADE — INVALID" :
          state == EXPIRED ? "NO TRADE — EXPIRED" :
          ""
@@ -400,7 +400,7 @@ if barstate.islast
         label.delete(tradeCard)
         tradeCard := na
 
-// Historical Research Mode plans are rendered above as plain BUY/SELL trade plans.\n\n// ── Compact dashboard and research segmentation ───────────────────────────────
+// Historical Research Mode plans are rendered above as plain BUY/SELL trade plans. |  | // ── Compact dashboard and research segmentation ───────────────────────────────
 f_price(float value) => na(value) ? "—" : str.tostring(value, format.mintick)
 f_rate(int wins, int losses) => wins + losses == 0 ? "—" : str.tostring(100.0 * wins / (wins + losses), "#.0") + "%"
 
@@ -414,7 +414,7 @@ if barstate.islast
         table.cell(dash, 0, 0, "GOLD TS", text_color = color.yellow), table.cell(dash, 1, 0, researchMode ? "v0.1 RESEARCH" : "v0.1 LIVE", text_color = color.silver)
         table.cell(dash, 0, 1, "Trend"), table.cell(dash, 1, 1, trend == 1 ? "BULLISH" : trend == -1 ? "BEARISH" : "NEUTRAL")
         table.cell(dash, 0, 2, "Status"), table.cell(dash, 1, 2, f_status_text(state), text_color = state == INVALID ? color.red : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? color.yellow : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.lime : color.white)
-        bool dashboardActivationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar\n        string dashboardAction = dashboardActivationBar ? (direction == 1 ? "BUY NOW" : "SELL NOW") : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? "WAIT" : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? "TRADE ACTIVE" : "—"\n        table.cell(dash, 0, 3, "Action"), table.cell(dash, 1, 3, dashboardAction)
+        bool dashboardActivationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar |         string dashboardAction = dashboardActivationBar ? (direction == 1 ? "BUY NOW" : "SELL NOW") : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? "WAIT" : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? "TRADE ACTIVE" : "—" |         table.cell(dash, 0, 3, "Action"), table.cell(dash, 1, 3, dashboardAction)
         table.cell(dash, 0, 4, "Entry zone"), table.cell(dash, 1, 4, hasProjection ? f_price(entryLower) + "–" + f_price(entryUpper) : "—")
         table.cell(dash, 0, 5, "Stop loss"), table.cell(dash, 1, 5, hasProjection ? f_price(stop) : "—")
         table.cell(dash, 0, 6, "Take profit"), table.cell(dash, 1, 6, hasProjection ? f_price(target) : "—")
