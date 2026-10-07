@@ -6,18 +6,26 @@ strategy("Gold TS v0.1", overlay = true, pyramiding = 0, process_orders_on_close
 // Every decision is made on confirmed bars. No request.security(), pivots, or lookahead are used.
 
 // ── Inputs ────────────────────────────────────────────────────────────────────
-string G_STRATEGY = "Strategy"
-float rr = input.float(2.3, "Risk/Reward", minval = 0.1, step = 0.1, group = G_STRATEGY)
-int fastLen = input.int(50, "Fast EMA", minval = 1, group = G_STRATEGY)
-int slowLen = input.int(200, "Slow EMA", minval = 2, group = G_STRATEGY)
-int structureLen = input.int(20, "Prior-range structure bars", minval = 2, group = G_STRATEGY)
-float retracement = input.float(50.0, "Entry retracement (%)", minval = 0, maxval = 100, step = 5, group = G_STRATEGY) / 100.0
-float zoneAtrWidth = input.float(0.10, "Entry zone half-width (ATR)", minval = 0, step = 0.05, group = G_STRATEGY)
-int atrLen = input.int(14, "ATR length", minval = 1, group = G_STRATEGY)
-float stopAtr = input.float(1.0, "Stop distance (ATR)", minval = 0.1, step = 0.1, group = G_STRATEGY)
-int maxWait = input.int(24, "Maximum bars waiting for entry", minval = 1, group = G_STRATEGY,
-     tooltip = "Baseline assumption: 24 chart bars. A setup may touch through this many bars after detection.")
-int terminalBars = input.int(1, "Bars to retain terminal status", minval = 1, maxval = 20, group = G_STRATEGY)
+// Locked forward-demo values; no optimization controls in trader settings.
+const float rr = 2.3
+const int fastLen = 50
+const int slowLen = 200
+const int structureLen = 20
+const float retracement = 0.50
+const float zoneAtrWidth = 0.10
+const int atrLen = 14
+const float stopAtr = 1.0
+const int maxWait = 24
+const int terminalBars = 1
+
+// Informational only: these never set order quantity or enforce account-wide risk.
+const float referenceAccount = 200000.0
+const float plannedRiskPct = 0.25
+const float referenceRisk = referenceAccount * plannedRiskPct / 100.0
+const float internalDailyLossPct = 2.0
+const float internalDailyLossLimit = referenceAccount * internalDailyLossPct / 100.0
+const string riskPlanningText = "PLANNED RISK: 0.25% / $500 MAX | $200,000 REFERENCE ONLY | SIZE EXTERNALLY"
+const string dailyPlanningText = "2% / $4,000 | EXTERNAL PORTFOLIO CONTROL"
 
 string G_FVG = "FVG (metadata only)"
 bool detectFvg = input.bool(true, "Enable FVG detection", group = G_FVG,
@@ -33,6 +41,8 @@ bool showDashboard = input.bool(true, "Show dashboard", group = G_DISPLAY)
 bool showTradeCard = input.bool(true, "Show simple trade instruction", group = G_DISPLAY,
      tooltip = "Shows a large plain-language WAIT / ENTER instruction with frozen Entry, SL and TP directly on the chart.")
 bool researchMode = input.bool(false, "Backtesting / Research Mode", group = G_DISPLAY)
+int researchTradesToShow = input.int(40, "Historical trades to show", minval = 1, maxval = 60, group = G_DISPLAY,
+     tooltip = "Research Mode only. Shows BUY/SELL, Entry zone, SL and TP for the most recent conceptual trades.")
 
 string G_ALERTS = "Alerts"
 bool lifecycleAlerts = input.bool(false, "Enable non-entry lifecycle alerts", group = G_ALERTS,
@@ -126,7 +136,15 @@ var int plainWins = 0
 var int plainLosses = 0
 var float plainNetR = 0.0
 
-// One-bar event pulses, used for alertcondition() and research marks.
+// Research-only historical trade drawings. These arrays are display state only.
+var array<box> historyEntryBoxes = array.new<box>()
+var array<line> historyEntryLines = array.new<line>()
+var array<line> historySlLines = array.new<line>()
+var array<line> historyTpLines = array.new<line>()
+var array<label> historyLabels = array.new<label>()
+var array<string> historyBaseTexts = array.new<string>()
+
+// One-bar event pulses for alert() lifecycle messages and research marks.
 bool evLongSetup = false
 bool evShortSetup = false
 bool evLongEntry = false
@@ -184,6 +202,31 @@ if barstate.isconfirmed
             activeBar := bar_index
             evLongEntry := direction == 1
             evShortEntry := direction == -1
+            // Research Mode: preserve the frozen conceptual trade plan on the historical chart.
+            // This does not affect entries, exits, alerts, statistics, or state transitions.
+            if researchMode
+                color histColor = direction == 1 ? color.teal : color.orange
+                box histBox = box.new(activeBar, entryUpper, activeBar + 1, entryLower, bgcolor = color.new(histColor, 84), border_color = histColor, extend = extend.none)
+                line histEntry = line.new(activeBar, entry, activeBar + 1, entry, color = histColor, style = line.style_dashed, width = 1)
+                line histSl = line.new(activeBar, stop, activeBar + 1, stop, color = color.red, width = 2)
+                line histTp = line.new(activeBar, target, activeBar + 1, target, color = color.lime, width = 2)
+                string histZone = str.tostring(entryLower, format.mintick) + "–" + str.tostring(entryUpper, format.mintick)
+                string histText = "CONCEPTUAL " + (direction == 1 ? "BUY GOLD" : "SELL GOLD") + " | PROJECTED ENTRY: " + histZone + " | SL: " + str.tostring(stop, format.mintick) + " | TP: " + str.tostring(target, format.mintick)
+                label histLabel = label.new(activeBar, direction == 1 ? entryLower : entryUpper, histText, xloc = xloc.bar_index, yloc = yloc.price,
+                     style = direction == 1 ? label.style_label_up : label.style_label_down, color = histColor, textcolor = color.white, size = size.small)
+                array.push(historyEntryBoxes, histBox)
+                array.push(historyEntryLines, histEntry)
+                array.push(historySlLines, histSl)
+                array.push(historyTpLines, histTp)
+                array.push(historyLabels, histLabel)
+                array.push(historyBaseTexts, histText)
+                if array.size(historyLabels) > researchTradesToShow
+                    box.delete(array.shift(historyEntryBoxes))
+                    line.delete(array.shift(historyEntryLines))
+                    line.delete(array.shift(historySlLines))
+                    line.delete(array.shift(historyTpLines))
+                    label.delete(array.shift(historyLabels))
+                    array.shift(historyBaseTexts)
             allTrades += 1
             if setupFvg
                 fvgTrades += 1
@@ -196,7 +239,12 @@ if barstate.isconfirmed
                  '","direction":"' + (direction == 1 ? "LONG" : "SHORT") + '","projected_entry":' + str.tostring(entry, format.mintick) +
                  ',"entry_lower":' + str.tostring(entryLower, format.mintick) + ',"entry_upper":' + str.tostring(entryUpper, format.mintick) +
                  ',"sl":' + str.tostring(stop, format.mintick) + ',"tp":' + str.tostring(target, format.mintick) +
-                 ',"rr":' + str.tostring(rr) + ' ,"touch_bar_close":' + str.tostring(close, format.mintick) + ' ,"fvg":"' + (setupFvg ? "YES" : "NO") + '","status":"VALID ENTRY","execution_note":"PROJECTED ENTRY IS NOT BROKER FILL"}'
+                 ',"rr":' + str.tostring(rr) + ' ,"touch_bar_close":' + str.tostring(close, format.mintick) +
+                 ',"action":"' + (direction == 1 ? "BUY" : "SELL") + '","market_revalidation_price":' + str.tostring(close, format.mintick) +
+                 ',"projected_risk_distance":' + str.tostring(frozenRisk, format.mintick) + ',"market_to_sl_distance":' + str.tostring(math.abs(close - stop), format.mintick) +
+                 ',"reference_account_usd":' + str.tostring(referenceAccount) + ',"planned_risk_pct":' + str.tostring(plannedRiskPct) +
+                 ',"planned_max_normal_loss_usd":' + str.tostring(referenceRisk) + ',"internal_daily_loss_pct":' + str.tostring(internalDailyLossPct) +
+                 ',"internal_daily_loss_limit_usd":' + str.tostring(internalDailyLossLimit) + ',"risk_control":"EXTERNAL_MANUAL_PORTFOLIO","automatic_position_sizing":false,"actionable":true,"fvg":"' + (setupFvg ? "YES" : "NO") + '","status":"VALID ENTRY","execution_note":"PROJECTED ENTRY IS NOT BROKER FILL"}'
             alert(payload, alert.freq_once_per_bar_close)
 
     else if isActive and bar_index > activeBar
@@ -205,11 +253,27 @@ if barstate.isconfirmed
         if stopHit and tpHit
             // Conservative integrity rule: unknown ordering is not called a win or loss.
             state := COMPLETED_AMBIGUOUS
+            if researchMode and array.size(historyLabels) > 0
+                int histLast = array.size(historyLabels) - 1
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + " | ⚠ RESULT: AMBIGUOUS")
+            if researchMode and array.size(historyEntryLines) > 0
+                line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
+                line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
+                line.set_x2(array.get(historyTpLines, array.size(historyTpLines) - 1), bar_index)
+                box.set_right(array.get(historyEntryBoxes, array.size(historyEntryBoxes) - 1), bar_index)
             terminalBar := bar_index
             evAmbiguous := true
             allAmbiguous += 1
         else if stopHit
             state := COMPLETED_SL
+            if researchMode and array.size(historyLabels) > 0
+                int histLast = array.size(historyLabels) - 1
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + " | ❌ RESULT: SL HIT (-1R)")
+            if researchMode and array.size(historyEntryLines) > 0
+                line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
+                line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
+                line.set_x2(array.get(historyTpLines, array.size(historyTpLines) - 1), bar_index)
+                box.set_right(array.get(historyEntryBoxes, array.size(historyEntryBoxes) - 1), bar_index)
             terminalBar := bar_index
             evSl := true
             allLosses += 1
@@ -222,6 +286,14 @@ if barstate.isconfirmed
                 plainNetR -= 1
         else if tpHit
             state := COMPLETED_TP
+            if researchMode and array.size(historyLabels) > 0
+                int histLast = array.size(historyLabels) - 1
+                label.set_text(array.get(historyLabels, histLast), array.get(historyBaseTexts, histLast) + " | ✅ RESULT: TP HIT (+" + str.tostring(rr) + "R)")
+            if researchMode and array.size(historyEntryLines) > 0
+                line.set_x2(array.get(historyEntryLines, array.size(historyEntryLines) - 1), bar_index)
+                line.set_x2(array.get(historySlLines, array.size(historySlLines) - 1), bar_index)
+                line.set_x2(array.get(historyTpLines, array.size(historyTpLines) - 1), bar_index)
+                box.set_right(array.get(historyEntryBoxes, array.size(historyEntryBoxes) - 1), bar_index)
             terminalBar := bar_index
             evTp := true
             allWins += 1
@@ -305,16 +377,17 @@ if barstate.islast
 var label tradeCard = na
 f_trade_instruction() =>
     string zoneText = (na(entryLower) ? "—" : str.tostring(entryLower, format.mintick)) + "–" + (na(entryUpper) ? "—" : str.tostring(entryUpper, format.mintick))
-    string levelsText = "ENTRY " + zoneText + "  |  SL " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + "  |  TP " + (na(target) ? "—" : str.tostring(target, format.mintick))
+    string projectedLevels = "PROJECTED ENTRY ZONE " + zoneText + " | SL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + " | TP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + " | R:R 1:" + str.tostring(rr) + " | " + riskPlanningText
+    string activationLevels = "MARKET ENTRY AFTER CONFIRMED REVALIDATION: " + str.tostring(close, format.mintick) + " | ORIGINAL PROJECTED ENTRY ZONE " + zoneText + " | SL AT " + (na(stop) ? "—" : str.tostring(stop, format.mintick)) + " | TP AT " + (na(target) ? "—" : str.tostring(target, format.mintick)) + " | R:R 1:" + str.tostring(rr) + " | " + riskPlanningText
     bool activationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar
-    string instruction = state == SETUP_FORMING_LONG ? "WAIT — LONG SETUP FORMING\n" + levelsText :
-         state == SETUP_FORMING_SHORT ? "WAIT — SHORT SETUP FORMING\n" + levelsText :
-         state == ENTRY_ACTIVE_LONG and activationBar ? "LONG — ENTER NOW\n" + levelsText :
-         state == ENTRY_ACTIVE_SHORT and activationBar ? "SHORT — ENTER NOW\n" + levelsText :
-         state == ENTRY_ACTIVE_LONG ? "LONG — TRADE ACTIVE\nORIGINAL " + levelsText + "\nDO NOT OPEN A NEW TRADE" :
-         state == ENTRY_ACTIVE_SHORT ? "SHORT — TRADE ACTIVE\nORIGINAL " + levelsText + "\nDO NOT OPEN A NEW TRADE" :
-         state == INVALID ? "INVALID — DO NOT ENTER" :
-         state == EXPIRED ? "EXPIRED — DO NOT ENTER" :
+    string instruction = state == SETUP_FORMING_LONG ? "POSSIBLE BUY — WAIT | DO NOT ENTER YET | " + projectedLevels :
+         state == SETUP_FORMING_SHORT ? "POSSIBLE SELL — WAIT | DO NOT ENTER YET | " + projectedLevels :
+         state == ENTRY_ACTIVE_LONG and activationBar ? "BUY GOLD — ENTER NOW | " + activationLevels :
+         state == ENTRY_ACTIVE_SHORT and activationBar ? "SELL GOLD — ENTER NOW | " + activationLevels :
+         state == ENTRY_ACTIVE_LONG ? "BUY TRADE ACTIVE | " + projectedLevels + " | DO NOT OPEN A NEW TRADE" :
+         state == ENTRY_ACTIVE_SHORT ? "SELL TRADE ACTIVE | " + projectedLevels + " | DO NOT OPEN A NEW TRADE" :
+         state == INVALID ? "NO TRADE — INVALID" :
+         state == EXPIRED ? "NO TRADE — EXPIRED" :
          ""
     instruction
 
@@ -340,15 +413,7 @@ if barstate.islast
         label.delete(tradeCard)
         tradeCard := na
 
-// Research marks are plots, not unbounded drawing objects.
-plotshape(researchMode and evLongSetup, "Long TS setup", shape.triangleup, location.belowbar, color.yellow, size = size.tiny, text = "TS")
-plotshape(researchMode and evShortSetup, "Short TS setup", shape.triangledown, location.abovebar, color.yellow, size = size.tiny, text = "TS")
-plotshape(researchMode and (evLongEntry or evShortEntry), "Entry activated", shape.circle, location.belowbar, color.lime, size = size.tiny)
-plotshape(researchMode and evInvalid, "Invalid", shape.xcross, location.abovebar, color.red, size = size.tiny)
-plotshape(researchMode and evExpired, "Expired", shape.xcross, location.abovebar, color.gray, size = size.tiny)
-plotshape(researchMode and evTp, "TP", shape.diamond, location.abovebar, color.lime, size = size.tiny)
-plotshape(researchMode and evSl, "SL", shape.diamond, location.belowbar, color.red, size = size.tiny)
-plotshape(researchMode and evAmbiguous, "Ambiguous", shape.square, location.abovebar, color.orange, size = size.tiny)
+// Historical Research Mode plans are rendered above as plain BUY/SELL trade plans.
 
 // ── Compact dashboard and research segmentation ───────────────────────────────
 f_price(float value) => na(value) ? "—" : str.tostring(value, format.mintick)
@@ -356,20 +421,26 @@ f_rate(int wins, int losses) => wins + losses == 0 ? "—" : str.tostring(100.0 
 
 // Keep one persistent table. TradingView's Tables style control governs whether graphic tables
 // are rendered; Show dashboard only controls this table's contents.
-var table dash = table.new(position.top_right, 2, 13, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+var table dash = table.new(position.top_right, 2, 17, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
 
 if barstate.islast
-    table.clear(dash, 0, 0, 1, 12)
+    table.clear(dash, 0, 0, 1, 16)
     if showDashboard
         table.cell(dash, 0, 0, "GOLD TS", text_color = color.yellow), table.cell(dash, 1, 0, researchMode ? "v0.1 RESEARCH" : "v0.1 LIVE", text_color = color.silver)
         table.cell(dash, 0, 1, "Trend"), table.cell(dash, 1, 1, trend == 1 ? "BULLISH" : trend == -1 ? "BEARISH" : "NEUTRAL")
         table.cell(dash, 0, 2, "Status"), table.cell(dash, 1, 2, f_status_text(state), text_color = state == INVALID ? color.red : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? color.yellow : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.lime : color.white)
-        table.cell(dash, 0, 3, "Direction"), table.cell(dash, 1, 3, direction == 1 ? "LONG" : direction == -1 ? "SHORT" : "—")
+        bool dashboardActivationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar
+        string dashboardAction = dashboardActivationBar ? (direction == 1 ? "BUY NOW" : "SELL NOW") : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? "WAIT" : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? "TRADE ACTIVE" : "—"
+        table.cell(dash, 0, 3, "Action"), table.cell(dash, 1, 3, dashboardAction)
         table.cell(dash, 0, 4, "Entry zone"), table.cell(dash, 1, 4, hasProjection ? f_price(entryLower) + "–" + f_price(entryUpper) : "—")
-        table.cell(dash, 0, 5, "SL"), table.cell(dash, 1, 5, hasProjection ? f_price(stop) : "—")
-        table.cell(dash, 0, 6, "TP"), table.cell(dash, 1, 6, hasProjection ? f_price(target) : "—")
+        table.cell(dash, 0, 5, "Stop loss"), table.cell(dash, 1, 5, hasProjection ? f_price(stop) : "—")
+        table.cell(dash, 0, 6, "Take profit"), table.cell(dash, 1, 6, hasProjection ? f_price(target) : "—")
         table.cell(dash, 0, 7, "R:R"), table.cell(dash, 1, 7, "1:" + str.tostring(rr))
         table.cell(dash, 0, 8, "FVG"), table.cell(dash, 1, 8, hasProjection and showFvg and setupFvg ? "YES — CONFLUENCE" : "—")
+        table.cell(dash, 0, 13, "Reference only"), table.cell(dash, 1, 13, "$200,000 | 15m validation")
+        table.cell(dash, 0, 14, "Planned risk / trade"), table.cell(dash, 1, 14, "0.25% / $500 MAX | SIZE EXTERNALLY")
+        table.cell(dash, 0, 15, "Internal daily stop"), table.cell(dash, 1, 15, dailyPlanningText)
+        table.cell(dash, 0, 16, "SL distance / sizing"), table.cell(dash, 1, 16, hasProjection ? "Projected " + f_price(frozenRisk) + " | USE ACTUAL ENTRY" : "USE ACTUAL ENTRY | BROKER CONTRACT VALUES")
         if researchMode
             table.cell(dash, 0, 9, "Conceptual All TS"), table.cell(dash, 1, 9, str.tostring(allTrades) + " | " + str.tostring(allWins) + "W/" + str.tostring(allLosses) + "L | " + f_rate(allWins, allLosses) + " | " + str.tostring(allNetR, "#.##") + "R")
             table.cell(dash, 0, 10, "Conceptual TS + FVG"), table.cell(dash, 1, 10, str.tostring(fvgTrades) + " | " + str.tostring(fvgWins) + "W/" + str.tostring(fvgLosses) + "L | " + f_rate(fvgWins, fvgLosses) + " | " + str.tostring(fvgNetR, "#.##") + "R")

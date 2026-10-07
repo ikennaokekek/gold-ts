@@ -4,31 +4,56 @@ Gold TS is a research/beta TradingView strategy for XAUUSD. It implements the ca
 
 ## Install and run
 
-1. Open `gold_ts_strategy.pine` in TradingView's Pine Editor and add it to an XAUUSD chart (the exploratory baseline used 15-minute bars).
+1. Open `gold_ts_strategy.pine` in TradingView's Pine Editor and add it to an XAUUSD chart (the locked validation timeframe is 15 minutes).
 2. Leave **Backtesting / Research Mode** off for the compact live view; turn it on for historical event marks and subgroup totals.
 3. To receive the one actionable notification, create a TradingView alert for the strategy and select **Any alert() function call**. With **Enable non-entry lifecycle alerts** left OFF (the default), the dynamic JSON stream emits only when a touched entry zone passes revalidation. Optional lifecycle messages are research-only, carry `actionable: false`, and must be deliberately enabled.
-4. Treat results as research. Validate settings across broader and unseen periods rather than optimizing the cited short sample.
+4. Treat results as research. Validate the locked configuration across broader and unseen periods without optimizing parameters.
+
+## Locked forward-demo configuration and external risk control
+
+Gold TS v0.1 means **Trend + Structure**, with FVG optional confluence/metadata only. Validate on **15m**. EMA 50/200, prior-range structure 20, retracement 50%, zone half-width 0.10 ATR, ATR 14, stop 1.0 ATR, wait 24 bars and **1:2.3 R:R** are fixed constants. Trader settings retain display, FVG metadata and optional research/lifecycle controls. Research mode is OFF by default. No optimization was performed.
+
+| Planning value | Locked reference |
+| --- | --- |
+| Reference account | $200,000 |
+| Planned risk per normal trade | 0.25% / $500 maximum planned loss |
+| Reference conceptual 1R / 2.3R | $500 / $1,150 |
+| Internal daily hard loss limit | -2% / -$4,000 of initial reference account |
+
+These values are **informational risk planning only**. They do not set TradingView initial capital, strategy order quantity, actual broker position size, or enforce a portfolio loss gate. The $500 assumes the $200,000 reference account. The $4,000 is our **internal rule**, not an FTMO rule or the prop firm's official maximum daily loss.
+
+Before every new order, externally check **realized daily losses + current open-position planned downside + proposed new-trade risk <= $4,000** across all instruments. Include floating losses and costs in a conservative account check without double-counting the same downside; reserve execution-cost/slippage allowance and do not use profits to expand this internal budget. Example: $3,200 realized losses plus $500 open-position risk leaves $300, so another $500 trade must not be opened. Do not wait until $4,000 is realized. Stop opening positions at the boundary; the trader/external system must monitor and manage existing exposure. Pine cannot see account-wide positions in other instruments or other chart instances. Record the daily reset timezone and day boundary consistently in the external ledger before testing.
+
+TS first determines the setup, projected entry and frozen technical stop. **Never move the SL to force $500 risk.** Size externally from the intended executable entry-to-SL distance and verified broker tick/contract values, rounding down to the permitted lot step and allowing for costs. Check actual fill risk after execution. XAUUSD, XAGUSD, XPTUSD, US Oil, UK Oil and Copper have broker-specific contracts; this script supplies prices and distances, not a universal lot size or validation of those other markets.
+
+The confirmed touch-bar close is a market/revalidation reference, **not a guaranteed broker fill**. If execution differs from the projected midpoint, actual market-to-SL distance and reward/risk differ from conceptual 2.3R geometry. The frozen target stays unchanged: $1,150 is the reference conceptual 2.3R amount, not a guaranteed cash profit for a market-filled trade. If execution is unsuitable, skip the external order rather than changing TS geometry.
+
+The live card shows POSSIBLE BUY/SELL — WAIT while forming, BUY/SELL GOLD — ENTER NOW only on confirmed activation, and TRADE ACTIVE — DO NOT OPEN A NEW TRADE thereafter. Planning risk is labeled reference-only and externally sized. The dashboard exposes reference account, risk, internal daily stop and projected SL distance. It does not report remaining daily allowance. Research labels explicitly say CONCEPTUAL; drawings preserve the frozen plan and result, with 40 recent trades by default (maximum 60).
+
+The actionable JSON preserves direction, projected_entry, touch_bar_close, zone, SL/TP, FVG and SIGNAL_CONCEPTUAL. Additive fields include action (BUY/SELL), market_revalidation_price, projected and market-to-SL distances, reference account, planned risk percent, planned maximum normal loss and internal daily limits. automatic_position_sizing: false and risk_control: EXTERNAL_MANUAL_PORTFOLIO make scope explicit. Create alerts using **Any alert() function call** only, then recreate existing TradingView alerts after installing this revision so their saved snapshot includes the changes.
+
+Forward-demo validation requires Pine v6 compilation, live/replay visual checks in both modes, JSON inspection and one-shot alert checks. Static/model tests do not execute Pine or certify broker behavior. Historical results do not guarantee profitability or passing a prop-firm evaluation.
 
 ## Exact baseline rules
 
 ### Trend
 
-The confirmed bar is bullish when EMA(50) is above EMA(200) **and** close is above EMA(50); bearish is the inverse. Both lengths are inputs. Trend grants direction only and cannot create a setup without structure.
+The confirmed bar is bullish when EMA(50) is above EMA(200) **and** close is above EMA(50); bearish is the inverse. Both lengths are locked constants. Trend grants direction only and cannot create a setup without structure.
 
 ### Structure
 
-A bullish structure event occurs when the confirmed close exceeds the highest high of the preceding 20 bars. A bearish event occurs when it closes below the lowest low of those preceding bars. The window is adjustable. It excludes the current bar, uses no pivots, and consumes no future bars.
+A bullish structure event occurs when the confirmed close exceeds the highest high of the preceding 20 bars. A bearish event occurs when it closes below the lowest low of those preceding bars. The window is locked at 20 bars. A bullish break also requires previous close <= priorHigh; a bearish break requires previous close >= priorLow. It excludes the current bar, uses no pivots, and consumes no future bars.
 
 ### Projected entry zone
 
-At a structure event, the script freezes a 50% retracement from the breakout close toward the broken prior-range boundary. The displayed zone is the frozen center ± 0.10 setup-time ATR. Both values are inputs. Entry cannot activate on the detection bar; touches begin on the following confirmed bar.
+At a structure event, the script freezes a 50% retracement from the breakout close toward the broken prior-range boundary. The displayed zone is the frozen center ± 0.10 setup-time ATR. Both values are locked constants. Entry cannot activate on the detection bar; touches begin on the following confirmed bar.
 
 This is an explicit neutral research baseline, not a claimed optimum. OHLC bars do not reveal the exact path through the zone, so activation is evaluated at the touch bar's close.
 
 ### Stop, target, invalidation, and expiry
 
 * Stop is the entry center ± 1.0 setup-time ATR: below for long, above for short.
-* Risk is `abs(entry center - stop)`. TP is entry + risk × R for long and entry − risk × R for short. R defaults to 2.3 and is adjustable.
+* Risk is `abs(entry center - stop)`. TP is entry + risk × R for long and entry − risk × R for short. R is locked at 2.3.
 * Frozen levels never trail or recalculate.
 * While waiting, a trend mismatch, stop breach, or invalid geometry invalidates the setup. Stop breach takes precedence if a single waiting bar both touches the zone and breaches invalidation.
 * The setup may touch during the next 24 bars by default. It expires once its age is greater than 24, so exactly 24 post-detection bars are eligible.
@@ -75,7 +100,7 @@ Ambiguous outcomes are excluded from wins, losses, and net R. No causal conclusi
 * All state changes are inside `barstate.isconfirmed`.
 * Prior range explicitly uses `[1]`; FVG uses only the current and two preceding candles.
 * There is no `request.security()`, pivot function, future offset, or lookahead setting.
-* ATR, trend, entry, stop, target, direction, FVG tag, and setup bar are frozen at confirmed setup creation.
+* Setup-time ATR-derived geometry, entry, stop, target, direction, FVG tag, and setup bar are frozen at confirmed setup creation. Current trend is recalculated on confirmed bars for revalidation.
 * No historical setup is moved or deleted based on its outcome.
 * Setup events require the strategy to be idle, preventing duplicate setups during forming or active states.
 
@@ -95,7 +120,7 @@ The reference-model tests cover forming/no alert, long and short geometry, one-s
 
 * This environment has no official TradingView Pine compiler. Paste the strategy into the current Pine Editor and confirm compilation under Pine v6.
 * Confirm alert creation using **Any alert() function call**, inspect the JSON webhook payload, and verify exactly one notification for both FVG-tagged and untagged entries.
-* Compare Strategy Tester order fills with the Conceptual dashboard without treating them as the same model. Confirm process-on-close behavior. Bar Magnifier is disabled by default for plan compatibility; if separately enabled in a future variant, verify account/data-range availability before relying on its broker-emulator detail.
+* Compare Strategy Tester order fills with the Conceptual dashboard without treating them as the same model. Confirm process-on-close behavior. Bar Magnifier remains disabled for plan compatibility.
 * Validate symbol tick formatting, chart timezone/session boundaries, gaps, tiny ATR, extreme volatility, insufficient warm-up data, and strategy behavior on live/replay bars.
 * Pine scripts cannot share imported local signal code in a standalone paste-friendly file. v0.1 therefore provides the requested authoritative strategy first; an indicator companion should be derived only with synchronization tests to avoid divergent logic.
 
