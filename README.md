@@ -28,7 +28,9 @@ TS first determines the setup, projected entry and frozen technical stop. **Neve
 
 The confirmed touch-bar close is a market/revalidation reference, **not a guaranteed broker fill**. If execution differs from the projected midpoint, actual market-to-SL distance and reward/risk differ from conceptual 2.3R geometry. The frozen target stays unchanged: $1,150 is the reference conceptual 2.3R amount, not a guaranteed cash profit for a market-filled trade. If execution is unsuitable, skip the external order rather than changing TS geometry.
 
-The live card shows POSSIBLE BUY/SELL — WAIT while forming, BUY/SELL GOLD — ENTER NOW only on confirmed activation, and TRADE ACTIVE — DO NOT OPEN A NEW TRADE thereafter. Planning risk is labeled reference-only and externally sized. The dashboard exposes reference account, risk, internal daily stop and projected SL distance. It does not report remaining daily allowance. Research labels explicitly say CONCEPTUAL; drawings preserve the frozen plan and result, with 40 recent trades by default (maximum 60).
+The primary UI is a compact, left-aligned chart card beside the current setup. Forming cards show POSSIBLE BUY/SELL — WAIT, the frozen ENTRY range, SL, TP and R:R. Confirmed activation shows BUY/SELL GOLD — ENTER NOW, ENTRY RANGE, SL, TP, R:R and RISK: 0.25% / $500 MAX. CONFIRMED AT is a secondary confirmed-close reference, not a broker fill. Later active bars show TRADE ACTIVE — DO NOT OPEN A NEW TRADE. No setup shows a small ⚪ NO SETUP card. The dashboard is optional and OFF by default. Research Mode is OFF by default; when enabled, multiline BUY/SELL cards retain frozen ranges, SL, TP and TP/SL/AMBIGUOUS results, with 40 recent trades by default (maximum 60). Risk remains reference-only and externally sized.
+
+To hide native strategy-emulator arrows and labels, open Gold TS settings → Style and uncheck Trades on chart, Signal labels and Quantity. Keep Labels, Lines and Boxes enabled for Gold TS cards and levels. Pine preserves its strategy orders; these native marker controls require manual chart settings. Existing saved instances may retain Show dashboard ON: turn it OFF in Inputs. ENTRY / ENTRY RANGE always denotes the original projected TS zone, not the emulator fill.
 
 The actionable JSON preserves direction, projected_entry, touch_bar_close, zone, SL/TP, FVG and SIGNAL_CONCEPTUAL. Additive fields include action (BUY/SELL), market_revalidation_price, projected and market-to-SL distances, reference account, planned risk percent, planned maximum normal loss and internal daily limits. automatic_position_sizing: false and risk_control: EXTERNAL_MANUAL_PORTFOLIO make scope explicit. Create alerts using **Any alert() function call** only, then recreate existing TradingView alerts after installing this revision so their saved snapshot includes the changes.
 
@@ -86,7 +88,7 @@ Pine strategies do not expose usable `alertcondition()` triggers in the way indi
 
 ## Research output
 
-Research mode shows bounded plot marks and dashboard segments for:
+Research mode shows bounded trade-plan drawings and optional dashboard segments for:
 
 * all activated TS trades;
 * TS + FVG;

@@ -64,7 +64,7 @@ class SourceContract(unittest.TestCase):
         self.assertIn("realized daily losses + current open-position planned downside + proposed new-trade risk <= $4,000", docs)
         self.assertIn("Never move the SL to force $500 risk", docs)
         self.assertIn("$1,150", docs)
-        self.assertIn("CONCEPTUAL ", SRC)
+        self.assertIn('"model":"SIGNAL_CONCEPTUAL"', SRC)
 
     def test_actionable_json_composes_for_both_directions_and_fvg_tags(self):
         # Evaluate literal concatenation with fixture values, not a substitute Pine compiler.
@@ -159,6 +159,47 @@ class SourceContract(unittest.TestCase):
         for variable in ("direction", "entry", "entryLower", "entryUpper", "stop", "target", "frozenRisk", "setupFvg", "entryAlertSent"):
             self.assertRegex(reset, rf"{variable} := (?:na|0|false)")
 
+
+    def test_compact_cards_keep_frozen_range_and_safe_activation(self):
+        card = SRC[SRC.index("f_trade_instruction() =>"):SRC.index("// Historical Research Mode")]
+        for fragment in ('str.tostring(entryLower, format.mintick)',
+                         'str.tostring(entryUpper, format.mintick)',
+                         'POSSIBLE BUY — WAIT', 'POSSIBLE SELL — WAIT',
+                         'BUY GOLD — ENTER NOW', 'SELL GOLD — ENTER NOW',
+                         'bar_index == activeBar', 'DO NOT OPEN A NEW TRADE',
+                         r'\nENTRY RANGE: ', r'\nSL: ', r'\nTP: ',
+                         r'\nRISK: 0.25% / $500 MAX', '⚪ NO SETUP',
+                         'size = size.small', 'label.set_xy(tradeCard, bar_index + 2, cardY)'):
+            self.assertIn(fragment, card)
+        self.assertIn('input.bool(false, "Show dashboard"', SRC)
+        self.assertIn('input.bool(true, "Show trade card"', SRC)
+        self.assertIn('ta.valuewhen(evLongEntry or evShortEntry, close, 0)', SRC)
+        self.assertNotIn('MARKET ENTRY AFTER', card)
+        self.assertNotIn('size.large', card)
+
+    def test_history_cards_are_multiline_frozen_and_bounded(self):
+        history = SRC[SRC.index('string histZone ='):SRC.index('allTrades += 1')]
+        self.assertIn('str.tostring(entryLower, format.mintick)', history)
+        self.assertIn('str.tostring(entryUpper, format.mintick)', history)
+        self.assertIn(r'"\nENTRY: " + histZone', history)
+        for result in (r'\n✅ RESULT: TP HIT (+', r'\n❌ RESULT: SL HIT (-1R)',
+                       r'\n⚠ RESULT: AMBIGUOUS'):
+            self.assertIn(result, SRC)
+        self.assertIn('maxval = 60', SRC)
+        self.assertIn('label.delete(array.shift(historyLabels))', history)
+        # 60 historical trades + one live set: 61 boxes, 183 lines, 61 labels.
+        self.assertIn('max_boxes_count = 100, max_lines_count = 200, max_labels_count = 200', SRC)
+
+    def test_locked_engine_matches_pre_restoration_main(self):
+        import hashlib
+        # Exclude only enumerated UI input/card text lines from the engine region.
+        engine = "\n".join(line for line in SRC[:SRC.index("// ── Bounded chart")].splitlines()
+                          if not any(fragment in line for fragment in (
+                              'string histText =', 'style = direction == 1 ? label.style_label_up',
+                              'label.set_text(array.get(historyLabels', 'bool showDashboard =',
+                              'bool showTradeCard =', 'tooltip = "Shows a large',
+                              'tooltip = "Shows a compact')))
+        self.assertEqual(hashlib.sha256(engine.encode()).hexdigest(), "169529cb56e13dde2b37a8df41eb213a22a30c54d43ed3f24a1e5faff66821fa")
 
 if __name__ == "__main__":
     unittest.main()
