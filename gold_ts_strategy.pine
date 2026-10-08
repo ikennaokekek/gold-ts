@@ -452,7 +452,8 @@ f_dash_row(int row, string title, string value, color valueColor) =>
     table.cell(dash, 0, row, title, text_color = color.silver, bgcolor = color.rgb(20, 24, 30), text_size = size.small, text_halign = text.align_left)
     table.cell(dash, 1, row, value, text_color = valueColor, bgcolor = color.rgb(20, 24, 30), text_size = size.small, text_halign = text.align_left)
 
-if barstate.islast
+// Initialize on open-market load; strategies otherwise wait for the realtime close.
+if barstate.islast or barstate.islastconfirmedhistory
     table.clear(dash, 0, 0, 1, 10)
     if showDashboard
         bool liveForming = liveState == SETUP_FORMING_LONG or liveState == SETUP_FORMING_SHORT

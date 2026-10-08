@@ -218,5 +218,14 @@ class SourceContract(unittest.TestCase):
         self.assertEqual(panel.count("f_dash_row("), 12)
         self.assertIn("text_color = valueColor", panel)
 
+    def test_complete_strategy_and_dashboard_startup(self):
+        self.assertTrue(SRC.startswith("//@version=6\nstrategy("))
+        self.assertEqual(CODE.count("strategy.entry("), 1)
+        self.assertEqual(CODE.count("strategy.exit("), 1)
+        for call in ("box.new(", "line.new(", "label.new(", "table.new("):
+            self.assertIn(call, CODE)
+        panel = SRC[SRC.index("// Persistent corner panel:"):SRC.index("// A strategy cannot expose")]
+        self.assertIn("if barstate.islast or barstate.islastconfirmedhistory", panel)
+
 if __name__ == "__main__":
     unittest.main()

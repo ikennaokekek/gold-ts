@@ -137,3 +137,7 @@ The adversarial audit confirmed and corrected these implementation defects witho
 * **Medium — ambiguous entry wording:** the alert field named `entry` could be mistaken for a broker fill. It is now `projected_entry`, alongside the observed touch-bar close and an execution warning.
 
 The audit did **not** change EMA 50/200, structure 20, ATR 14, 50% retracement, 0.10 ATR zone, 1 ATR stop, 24-bar expiry, or default 2.3R. It found no FVG dependency in signal generation or revalidation, no future-series access, and no duplicate actionable-alert path.
+
+## CE10244 installation check
+
+CE10244 reports that the submitted strategy has no order-generating or drawing calls. The failing TradingView editor was empty; replacing it with the complete repository file restored real orders and historical cards and compiled successfully in Pine v6 on 8 October 2026. Paste the entire file, starting with `//@version=6` and ending with the lifecycle alert block. Do not add dummy plots or orders. The live table also initializes on the last confirmed historical bar so an open-market load does not wait for the realtime bar to close. Trading logic, cards, alerts and risk settings are unchanged.
