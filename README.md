@@ -141,3 +141,5 @@ The audit did **not** change EMA 50/200, structure 20, ATR 14, 50% retracement, 
 ## CE10244 installation check
 
 CE10244 reports that the submitted strategy has no order-generating or drawing calls. The failing TradingView editor was empty; replacing it with the complete repository file restored real orders and historical cards and compiled successfully in Pine v6 on 8 October 2026. Paste the entire file, starting with `//@version=6` and ending with the lifecycle alert block. Do not add dummy plots or orders. The live table also initializes on the last confirmed historical bar so an open-market load does not wait for the realtime bar to close. Trading logic, cards, alerts and risk settings are unchanged.
+
+Trade cards, entry boxes and entry/SL/TP lines use `force_overlay = true` so they remain anchored to the main price chart even when Gold TS is moved to a separate pane. The dashboard stays at the upper-left of the script pane. Moving the script does not change trading calculations.

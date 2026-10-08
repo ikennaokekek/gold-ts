@@ -199,7 +199,7 @@ class SourceContract(unittest.TestCase):
                               'label.set_text(array.get(historyLabels', 'bool showDashboard =',
                               'bool showTradeCard =', 'tooltip = "Shows a large',
                               'tooltip = "Shows a compact')))
-        self.assertEqual(hashlib.sha256(engine.encode()).hexdigest(), "169529cb56e13dde2b37a8df41eb213a22a30c54d43ed3f24a1e5faff66821fa")
+        self.assertEqual(hashlib.sha256(engine.replace(", force_overlay = true", "").encode()).hexdigest(), "169529cb56e13dde2b37a8df41eb213a22a30c54d43ed3f24a1e5faff66821fa")
 
     def test_dashboard_is_persistent_confirmed_and_independent_of_cards(self):
         panel = SRC[SRC.index("// Snapshot only confirmed engine state"):SRC.index("// A strategy cannot expose")]
@@ -226,6 +226,18 @@ class SourceContract(unittest.TestCase):
             self.assertIn(call, CODE)
         panel = SRC[SRC.index("// Persistent corner panel:"):SRC.index("// A strategy cannot expose")]
         self.assertIn("if barstate.islast or barstate.islastconfirmedhistory", panel)
+
+    def test_trade_drawings_stay_on_price_chart_when_dashboard_pane_moves(self):
+        constructors = []
+        lines = SRC.splitlines()
+        for i, line in enumerate(lines):
+            if re.search(r"(?:box|line|label)\.new\(", line):
+                constructors.append(line if line.endswith(")") else line + lines[i + 1])
+        self.assertEqual(len(constructors), 10)
+        for constructor in constructors:
+            self.assertIn("force_overlay = true", constructor)
+        table = next(line for line in SRC.splitlines() if "table.new(" in line)
+        self.assertNotIn("force_overlay = true", table)
 
 if __name__ == "__main__":
     unittest.main()

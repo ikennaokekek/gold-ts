@@ -206,14 +206,14 @@ if barstate.isconfirmed
             // This does not affect entries, exits, alerts, statistics, or state transitions.
             if researchMode
                 color histColor = direction == 1 ? color.teal : color.orange
-                box histBox = box.new(activeBar, entryUpper, activeBar + 1, entryLower, bgcolor = color.new(histColor, 84), border_color = histColor, extend = extend.none)
-                line histEntry = line.new(activeBar, entry, activeBar + 1, entry, color = histColor, style = line.style_dashed, width = 1)
-                line histSl = line.new(activeBar, stop, activeBar + 1, stop, color = color.red, width = 2)
-                line histTp = line.new(activeBar, target, activeBar + 1, target, color = color.lime, width = 2)
+                box histBox = box.new(activeBar, entryUpper, activeBar + 1, entryLower, bgcolor = color.new(histColor, 84), border_color = histColor, extend = extend.none, force_overlay = true)
+                line histEntry = line.new(activeBar, entry, activeBar + 1, entry, color = histColor, style = line.style_dashed, width = 1, force_overlay = true)
+                line histSl = line.new(activeBar, stop, activeBar + 1, stop, color = color.red, width = 2, force_overlay = true)
+                line histTp = line.new(activeBar, target, activeBar + 1, target, color = color.lime, width = 2, force_overlay = true)
                 string histZone = str.tostring(entryLower, format.mintick) + "–" + str.tostring(entryUpper, format.mintick)
                 string histText = (direction == 1 ? "BUY GOLD" : "SELL GOLD") + "\nENTRY: " + histZone + "\nSL: " + str.tostring(stop, format.mintick) + "\nTP: " + str.tostring(target, format.mintick)
                 label histLabel = label.new(activeBar, direction == 1 ? entryLower : entryUpper, histText, xloc = xloc.bar_index, yloc = yloc.price,
-                     style = direction == 1 ? label.style_label_up : label.style_label_down, textalign = text.align_left, color = histColor, textcolor = color.white, size = size.small)
+                     style = direction == 1 ? label.style_label_up : label.style_label_down, textalign = text.align_left, color = histColor, textcolor = color.white, size = size.small, force_overlay = true)
                 array.push(historyEntryBoxes, histBox)
                 array.push(historyEntryLines, histEntry)
                 array.push(historySlLines, histSl)
@@ -338,8 +338,8 @@ if barstate.islast
     if hasProjection
         if showEntry
             if na(entryBox)
-                entryBox := box.new(setupBar, entryUpper, bar_index + 1, entryLower, bgcolor = color.new(directionColor, 82), border_color = directionColor, extend = extend.right)
-                entryLine := line.new(setupBar, entry, bar_index + 1, entry, color = directionColor, style = line.style_dashed, extend = extend.right)
+                entryBox := box.new(setupBar, entryUpper, bar_index + 1, entryLower, bgcolor = color.new(directionColor, 82), border_color = directionColor, extend = extend.right, force_overlay = true)
+                entryLine := line.new(setupBar, entry, bar_index + 1, entry, color = directionColor, style = line.style_dashed, extend = extend.right, force_overlay = true)
             else
                 box.set_lefttop(entryBox, setupBar, entryUpper), box.set_rightbottom(entryBox, bar_index + 1, entryLower), box.set_bgcolor(entryBox, color.new(directionColor, 82)), box.set_border_color(entryBox, directionColor)
                 line.set_xy1(entryLine, setupBar, entry), line.set_xy2(entryLine, bar_index + 1, entry), line.set_color(entryLine, directionColor)
@@ -350,14 +350,14 @@ if barstate.islast
                 line.delete(entryLine), entryLine := na
         if showSl
             if na(slLine)
-                slLine := line.new(setupBar, stop, bar_index + 1, stop, color = color.red, width = 2, extend = extend.right)
+                slLine := line.new(setupBar, stop, bar_index + 1, stop, color = color.red, width = 2, extend = extend.right, force_overlay = true)
             else
                 line.set_xy1(slLine, setupBar, stop), line.set_xy2(slLine, bar_index + 1, stop)
         else if not na(slLine)
             line.delete(slLine), slLine := na
         if showTp
             if na(tpLine)
-                tpLine := line.new(setupBar, target, bar_index + 1, target, color = color.lime, width = 2, extend = extend.right)
+                tpLine := line.new(setupBar, target, bar_index + 1, target, color = color.lime, width = 2, extend = extend.right, force_overlay = true)
             else
                 line.set_xy1(tpLine, setupBar, target), line.set_xy2(tpLine, bar_index + 1, target)
         else if not na(tpLine)
@@ -408,7 +408,7 @@ if barstate.islast
         color cardTextColor = state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.black : color.black
         if na(tradeCard)
             tradeCard := label.new(bar_index + 2, cardY, tradeInstruction, xloc = xloc.bar_index, yloc = yloc.price,
-                 style = label.style_label_left, textalign = text.align_left, color = cardColor, textcolor = cardTextColor, size = size.small)
+                 style = label.style_label_left, textalign = text.align_left, color = cardColor, textcolor = cardTextColor, size = size.small, force_overlay = true)
         else
             label.set_xy(tradeCard, bar_index + 2, cardY)
             label.set_text(tradeCard, tradeInstruction)
