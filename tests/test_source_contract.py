@@ -133,7 +133,7 @@ class SourceContract(unittest.TestCase):
         self.assertIn('"projected_entry":', SRC)
         self.assertIn('"touch_bar_close":', SRC)
         self.assertIn('"execution_note":"PROJECTED ENTRY IS NOT BROKER FILL"', SRC)
-        self.assertIn('"Conceptual All TS"', SRC)
+        self.assertIn('"COMPLETED — NO LIVE ENTRY"', SRC)
 
     def test_broker_order_is_causal_market_order_after_revalidation(self):
         branch = SRC[SRC.index("else if zoneTouched"):SRC.index("else if isActive")]
@@ -171,7 +171,7 @@ class SourceContract(unittest.TestCase):
                          r'\nRISK: 0.25% / $500 MAX', '⚪ NO SETUP',
                          'size = size.small', 'label.set_xy(tradeCard, bar_index + 2, cardY)'):
             self.assertIn(fragment, card)
-        self.assertIn('input.bool(false, "Show dashboard"', SRC)
+        self.assertIn('input.bool(true, "Show dashboard"', SRC)
         self.assertIn('input.bool(true, "Show trade card"', SRC)
         self.assertIn('ta.valuewhen(evLongEntry or evShortEntry, close, 0)', SRC)
         self.assertNotIn('MARKET ENTRY AFTER', card)
@@ -200,6 +200,23 @@ class SourceContract(unittest.TestCase):
                               'bool showTradeCard =', 'tooltip = "Shows a large',
                               'tooltip = "Shows a compact')))
         self.assertEqual(hashlib.sha256(engine.encode()).hexdigest(), "169529cb56e13dde2b37a8df41eb213a22a30c54d43ed3f24a1e5faff66821fa")
+
+    def test_dashboard_is_persistent_confirmed_and_independent_of_cards(self):
+        panel = SRC[SRC.index("// Snapshot only confirmed engine state"):SRC.index("// A strategy cannot expose")]
+        self.assertIn("if barstate.isconfirmed", panel)
+        self.assertIn("liveState := state", panel)
+        self.assertIn("liveTrend := trend", panel)
+        self.assertIn("var table dash = table.new(position.top_left, 2, 11", panel)
+        self.assertIn("if barstate.islast", panel)
+        self.assertIn("liveBar == liveActiveBar", panel)
+        self.assertIn("timeframe.isminutes and timeframe.multiplier == 15", panel)
+        for text in ("FORMING — WAIT", "VALID ENTRY", "INVALID", "NO SETUP", "NOT VALIDATED ON THIS TIMEFRAME.", "$500 / 0.25%"):
+            self.assertIn(text, panel)
+        self.assertNotIn("historyLabels", panel)
+        self.assertNotIn("showTradeCard", panel)
+        self.assertNotIn("if researchMode", panel)
+        self.assertEqual(panel.count("f_dash_row("), 12)
+        self.assertIn("text_color = valueColor", panel)
 
 if __name__ == "__main__":
     unittest.main()

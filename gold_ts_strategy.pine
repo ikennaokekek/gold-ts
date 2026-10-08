@@ -37,7 +37,7 @@ string G_DISPLAY = "Display"
 bool showEntry = input.bool(true, "Show Entry", group = G_DISPLAY)
 bool showSl = input.bool(true, "Show SL", group = G_DISPLAY)
 bool showTp = input.bool(true, "Show TP", group = G_DISPLAY)
-bool showDashboard = input.bool(false, "Show dashboard", group = G_DISPLAY)
+bool showDashboard = input.bool(true, "Show dashboard", group = G_DISPLAY)
 bool showTradeCard = input.bool(true, "Show trade card", group = G_DISPLAY,
      tooltip = "Shows a compact card beside the current setup with its frozen entry range, SL and TP.")
 bool researchMode = input.bool(false, "Backtesting / Research Mode", group = G_DISPLAY)
@@ -425,33 +425,71 @@ if barstate.islast
 f_price(float value) => na(value) ? "—" : str.tostring(value, format.mintick)
 f_rate(int wins, int losses) => wins + losses == 0 ? "—" : str.tostring(100.0 * wins / (wins + losses), "#.0") + "%"
 
-// Keep one persistent table. TradingView's Tables style control governs whether graphic tables
-// are rendered; Show dashboard only controls this table's contents.
-var table dash = table.new(position.top_right, 2, 17, bgcolor = color.new(color.black, 15), frame_color = color.gray, frame_width = 1)
+// Snapshot only confirmed engine state, never historical drawing arrays.
+var int liveState = NO_SETUP
+var int liveTrend = 0
+var int liveDirection = 0
+var int liveBar = na
+var int liveActiveBar = na
+var float liveLower = na
+var float liveUpper = na
+var float liveStop = na
+var float liveTarget = na
+if barstate.isconfirmed
+    liveState := state
+    liveTrend := trend
+    liveDirection := direction
+    liveBar := bar_index
+    liveActiveBar := activeBar
+    liveLower := entryLower
+    liveUpper := entryUpper
+    liveStop := stop
+    liveTarget := target
+
+// Persistent corner panel: independent of card visibility and Research Mode.
+var table dash = table.new(position.top_left, 2, 11, bgcolor = color.rgb(20, 24, 30), frame_color = color.gray, frame_width = 1)
+f_dash_row(int row, string title, string value, color valueColor) =>
+    table.cell(dash, 0, row, title, text_color = color.silver, bgcolor = color.rgb(20, 24, 30), text_size = size.small, text_halign = text.align_left)
+    table.cell(dash, 1, row, value, text_color = valueColor, bgcolor = color.rgb(20, 24, 30), text_size = size.small, text_halign = text.align_left)
 
 if barstate.islast
-    table.clear(dash, 0, 0, 1, 16)
+    table.clear(dash, 0, 0, 1, 10)
     if showDashboard
-        table.cell(dash, 0, 0, "GOLD TS", text_color = color.yellow), table.cell(dash, 1, 0, researchMode ? "v0.1 RESEARCH" : "v0.1 LIVE", text_color = color.silver)
-        table.cell(dash, 0, 1, "Trend"), table.cell(dash, 1, 1, trend == 1 ? "BULLISH" : trend == -1 ? "BEARISH" : "NEUTRAL")
-        table.cell(dash, 0, 2, "Status"), table.cell(dash, 1, 2, f_status_text(state), text_color = state == INVALID ? color.red : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? color.yellow : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? color.lime : color.white)
-        bool dashboardActivationBar = (state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT) and bar_index == activeBar
-        string dashboardAction = dashboardActivationBar ? (direction == 1 ? "BUY NOW" : "SELL NOW") : state == SETUP_FORMING_LONG or state == SETUP_FORMING_SHORT ? "WAIT" : state == ENTRY_ACTIVE_LONG or state == ENTRY_ACTIVE_SHORT ? "TRADE ACTIVE" : "—"
-        table.cell(dash, 0, 3, "Action"), table.cell(dash, 1, 3, dashboardAction)
-        table.cell(dash, 0, 4, "Entry zone"), table.cell(dash, 1, 4, hasProjection ? f_price(entryLower) + "–" + f_price(entryUpper) : "—")
-        table.cell(dash, 0, 5, "Stop loss"), table.cell(dash, 1, 5, hasProjection ? f_price(stop) : "—")
-        table.cell(dash, 0, 6, "Take profit"), table.cell(dash, 1, 6, hasProjection ? f_price(target) : "—")
-        table.cell(dash, 0, 7, "R:R"), table.cell(dash, 1, 7, "1:" + str.tostring(rr))
-        table.cell(dash, 0, 8, "FVG"), table.cell(dash, 1, 8, hasProjection and showFvg and setupFvg ? "YES — CONFLUENCE" : "—")
-        table.cell(dash, 0, 13, "Reference only"), table.cell(dash, 1, 13, "$200,000 | 15m validation")
-        table.cell(dash, 0, 14, "Planned risk / trade"), table.cell(dash, 1, 14, "0.25% / $500 MAX | SIZE EXTERNALLY")
-        table.cell(dash, 0, 15, "Internal daily stop"), table.cell(dash, 1, 15, dailyPlanningText)
-        table.cell(dash, 0, 16, "SL distance / sizing"), table.cell(dash, 1, 16, hasProjection ? "Projected " + f_price(frozenRisk) + " | USE ACTUAL ENTRY" : "USE ACTUAL ENTRY | BROKER CONTRACT VALUES")
-        if researchMode
-            table.cell(dash, 0, 9, "Conceptual All TS"), table.cell(dash, 1, 9, str.tostring(allTrades) + " | " + str.tostring(allWins) + "W/" + str.tostring(allLosses) + "L | " + f_rate(allWins, allLosses) + " | " + str.tostring(allNetR, "#.##") + "R")
-            table.cell(dash, 0, 10, "Conceptual TS + FVG"), table.cell(dash, 1, 10, str.tostring(fvgTrades) + " | " + str.tostring(fvgWins) + "W/" + str.tostring(fvgLosses) + "L | " + f_rate(fvgWins, fvgLosses) + " | " + str.tostring(fvgNetR, "#.##") + "R")
-            table.cell(dash, 0, 11, "Conceptual TS no FVG"), table.cell(dash, 1, 11, str.tostring(plainTrades) + " | " + str.tostring(plainWins) + "W/" + str.tostring(plainLosses) + "L | " + f_rate(plainWins, plainLosses) + " | " + str.tostring(plainNetR, "#.##") + "R")
-            table.cell(dash, 0, 12, "Conceptual ambiguous"), table.cell(dash, 1, 12, str.tostring(allAmbiguous))
+        bool liveForming = liveState == SETUP_FORMING_LONG or liveState == SETUP_FORMING_SHORT
+        bool liveActive = liveState == ENTRY_ACTIVE_LONG or liveState == ENTRY_ACTIVE_SHORT
+        bool liveActivation = liveActive and liveBar == liveActiveBar
+        bool liveProjection = liveForming or liveActive
+        string liveStatus = "NO SETUP"
+        string liveAction = "WAIT"
+        color liveColor = color.white
+        if liveForming
+            liveStatus := "FORMING — WAIT"
+            liveColor := color.yellow
+        else if liveActive
+            liveStatus := liveActivation ? "VALID ENTRY" : "TRADE ACTIVE"
+            liveAction := liveActivation ? (liveDirection == 1 ? "BUY NOW" : "SELL NOW") : "DO NOT OPEN A NEW TRADE"
+            liveColor := color.lime
+        else if liveState == INVALID
+            liveStatus := "INVALID"
+            liveAction := "DO NOT ENTER"
+            liveColor := color.rgb(255, 120, 120)
+        else if liveState == EXPIRED
+            liveStatus := "EXPIRED"
+            liveAction := "DO NOT ENTER"
+        else if liveState >= COMPLETED_TP
+            liveStatus := "COMPLETED — NO LIVE ENTRY"
+        bool validatedTimeframe = timeframe.isminutes and timeframe.multiplier == 15
+        f_dash_row(0, "GOLD TS v0.1", researchMode ? "LIVE / RESEARCH" : "LIVE", color.white)
+        f_dash_row(1, "Trend", liveTrend == 1 ? "BULLISH" : liveTrend == -1 ? "BEARISH" : "NEUTRAL", color.white)
+        f_dash_row(2, "Status", liveStatus, liveColor)
+        f_dash_row(3, "Action", liveAction, liveColor)
+        f_dash_row(4, "Entry range", liveProjection ? f_price(liveLower) + "–" + f_price(liveUpper) : "—", color.white)
+        f_dash_row(5, "SL", liveProjection ? f_price(liveStop) : "—", color.white)
+        f_dash_row(6, "TP", liveProjection ? f_price(liveTarget) : "—", color.white)
+        f_dash_row(7, "R:R", "1:" + str.tostring(rr), color.white)
+        f_dash_row(8, "Reference risk", "$500 / 0.25%", color.white)
+        f_dash_row(9, "Price context", "PROJECTED ZONE / NOT BROKER FILL", color.silver)
+        f_dash_row(10, "Timeframe", validatedTimeframe ? "15m" : "NOT VALIDATED ON THIS TIMEFRAME.", validatedTimeframe ? color.silver : color.yellow)
 
 // A strategy cannot expose usable alertcondition() triggers; alertcondition() only has effect in indicators.
 // The default alert() stream therefore contains VALID ENTRY only. Optional lifecycle alerts are explicitly
